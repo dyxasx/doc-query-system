@@ -120,13 +120,13 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers: CORS_HEADERS, body: "" };
   }
 
-  // 关键：让 @netlify/blobs 知道 token 和 siteID
-  if (event.headers && event.headers["netlify-blobs-store"] || (event.headers && Object.keys(event.headers).some(k => k.toLowerCase().includes("netlify")))) {
-    try { connectLambda(event); } catch (e) { /* ignore */ }
-  }
-  // 兼容直接调用：手动从环境变量设置
-  if (process.env.NETLIFY_BLOBS_SITE_ID && process.env.NETLIFY_BLOBS_TOKEN) {
-    try { connectLambda(event); } catch (e) { /* ignore */ }
+  // 每次请求都用 connectLambda(event) 注入 Blobs 上下文
+  try {
+    if (event && event.blobs !== undefined) {
+      connectLambda(event);
+    }
+  } catch (e) {
+    console.log("connectLambda failed:", e.message);
   }
 
   await ensureInit();
