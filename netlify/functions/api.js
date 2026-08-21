@@ -367,10 +367,10 @@ exports.handler = async (event) => {
       });
     }
 
-    return json({ error: "接口不存在", path: apiPart }, 404);
+    return json({ error: "接口不存在", path: apiPart, method: method, segments: JSON.stringify(segments) }, 404);
   } catch (err) {
     console.error("API Error:", err);
-    return json({ error: "服务器错误: " + err.message }, 500);
+    return json({ error: "服务器错误: " + err.message, stack: err.stack }, 500);
   }
 };
 
