@@ -10,11 +10,18 @@
 
 # 重写规则：/api/* 请求转发到 Netlify Functions
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/:splat"
+  from = "/api"
+  to = "/.netlify/functions/api"
   status = 200
+  force = true
 
-# SPA 回退（可选）
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+# SPA 回退（HTML 页面找不到时回退到 index.html）
 [[redirects]]
   from = "/*"
   to = "/index.html"

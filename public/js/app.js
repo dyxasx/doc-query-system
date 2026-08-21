@@ -1,6 +1,6 @@
 // ========== API 封装 ==========
 
-const API_BASE = "/api";
+const API_BASE = "/.netlify/functions/api";
 
 // Token 管理
 const Auth = {
