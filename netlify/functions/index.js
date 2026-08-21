@@ -304,14 +304,14 @@ exports.handler = async (event) => {
       return await handleUploadDocument(event);
     }
 
-    // POST /api/upload-url - 获取 GitHub Releases 直传 URL（突破 6MB 限制）
-    if (method === "POST" && segments[0] === "upload-url") {
+    // POST /api/upload - 获取 GitHub Releases 直传 URL（突破 6MB 限制）
+    if (method === "POST" && segments[0] === "upload") {
       if (!authPayload) return json({ error: "未登录" }, 401);
       return await handleGetUploadUrl(body);
     }
 
-    // POST /api/register-upload - 注册已上传的文件（保存元数据）
-    if (method === "POST" && segments[0] === "register-upload") {
+    // POST /api/register - 注册已上传的文件（保存元数据）
+    if (method === "POST" && segments[0] === "register") {
       if (!authPayload) return json({ error: "未登录" }, 401);
       return await handleRegisterUpload(body);
     }

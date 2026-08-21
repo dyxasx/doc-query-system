@@ -223,7 +223,7 @@
           document.getElementById("progressText").textContent = "获取上传 URL...";
           setProgress(10);
 
-          const urlRes = await api("/upload-url", {
+          const urlRes = await api("/upload", {
             method: "POST",
             body: JSON.stringify({
               filename: selectedFile.name,
@@ -243,7 +243,7 @@
           document.getElementById("progressText").textContent = "保存元数据...";
           setProgress(85);
 
-          await api("/register-upload", {
+          await api("/register", {
             method: "POST",
             body: JSON.stringify({
               tagName: urlRes.tagName,
