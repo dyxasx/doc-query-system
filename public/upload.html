@@ -16,7 +16,7 @@
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
         <i class="fa-solid fa-cloud-arrow-up"></i>
         <div style="font-size:18px;margin-bottom:4px;" id="uploadZoneText">点击选择文件 或拖拽到此处</div>
-        <div style="font-size:13px;color:var(--text-light);">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 4MB，建议图片用 PDF/Word 先压缩）</div>
+        <div style="font-size:13px;color:var(--text-light);">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 100MB，大文件直传 GitHub）</div>
         <input type="file" id="fileInput" style="display:none;" onchange="onFileSelected(this)">
       </div>
 
@@ -112,8 +112,8 @@
       const file = input.files && input.files[0];
       if (!file) return;
 
-      if (file.size > 4 * 1024 * 1024) {
-        showToast("文件太大，最大支持4MB（base64 编码后约 5.3MB，受 Netlify 函数限制）。请先用 PDF/Word 压缩工具压缩后再上传", "error");
+      if (file.size > 100 * 1024 * 1024) {
+        showToast("文件太大，最大支持100MB", "error");
         return;
       }
 
@@ -142,7 +142,38 @@
       } catch(e) { console.error(e); }
     }
 
-    // 把 ArrayBuffer 转 base64（分块避免堆栈溢出）
+    function setProgress(p) {
+      document.getElementById("progressBarFill").style.width = p + "%";
+    }
+
+    function xhrUpload(url, file, contentType, onProgress) {
+      return new Promise(function(resolve, reject) {
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", url);
+        xhr.setRequestHeader("Content-Type", contentType);
+        xhr.upload.onprogress = function(e) {
+          if (e.lengthComputable && onProgress) {
+            onProgress(e.loaded / e.total);
+          }
+        };
+        xhr.onload = function() {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try { resolve(JSON.parse(xhr.responseText)); }
+            catch { resolve(xhr.responseText); }
+          } else {
+            try {
+              const err = JSON.parse(xhr.responseText);
+              reject(new Error(err.error || ("HTTP " + xhr.status)));
+            } catch {
+              reject(new Error("HTTP " + xhr.status));
+            }
+          }
+        };
+        xhr.onerror = function() { reject(new Error("网络错误")); };
+        xhr.send(file);
+      });
+    }
+
     function arrayBufferToBase64(buffer) {
       let binary = '';
       const bytes = new Uint8Array(buffer);
@@ -162,32 +193,70 @@
 
       document.getElementById("uploadBtn").disabled = true;
       document.getElementById("progressArea").style.display = "block";
-      document.getElementById("progressText").textContent = "正在读取文件...";
-      setProgress(10);
+      document.getElementById("progressText").textContent = "准备上传...";
+      setProgress(5);
 
       try {
-        // 读取文件为 ArrayBuffer
-        const arrayBuffer = await selectedFile.arrayBuffer();
-        setProgress(30);
-        document.getElementById("progressText").textContent = "正在转换为 base64...";
+        if (selectedFile.size <= 4 * 1024 * 1024) {
+          document.getElementById("progressText").textContent = "读取文件...";
+          setProgress(15);
 
-        const base64Data = arrayBufferToBase64(arrayBuffer);
-        setProgress(50);
-        document.getElementById("progressText").textContent = "正在上传到服务器...";
+          const arrayBuffer = await selectedFile.arrayBuffer();
+          const base64Data = arrayBufferToBase64(arrayBuffer);
 
-        // 调用后端 API（base64 通过 JSON POST）
-        await api("/documents", {
-          method: "POST",
-          body: JSON.stringify({
-            title: title,
-            description: description,
-            categoryId: categoryId,
-            filename: selectedFile.name,
-            filetype: selectedFile.name.split(".").pop().toLowerCase(),
-            mimeType: getMimeType(selectedFile.name),
-            fileData: base64Data,
-          }),
-        });
+          document.getElementById("progressText").textContent = "上传中...";
+          setProgress(40);
+
+          await api("/documents", {
+            method: "POST",
+            body: JSON.stringify({
+              title: title,
+              description: description,
+              categoryId: categoryId,
+              filename: selectedFile.name,
+              filetype: selectedFile.name.split(".").pop().toLowerCase(),
+              mimeType: getMimeType(selectedFile.name),
+              fileData: base64Data,
+            }),
+          });
+        } else {
+          document.getElementById("progressText").textContent = "获取上传 URL...";
+          setProgress(10);
+
+          const urlRes = await api("/upload-url", {
+            method: "POST",
+            body: JSON.stringify({
+              filename: selectedFile.name,
+              fileSize: selectedFile.size,
+            }),
+          });
+
+          document.getElementById("progressText").textContent = "直传到 GitHub...";
+
+          await xhrUpload(
+            urlRes.uploadUrl,
+            selectedFile,
+            selectedFile.type || "application/octet-stream",
+            function(ratio) { setProgress(10 + ratio * 70); }
+          );
+
+          document.getElementById("progressText").textContent = "保存元数据...";
+          setProgress(85);
+
+          await api("/register-upload", {
+            method: "POST",
+            body: JSON.stringify({
+              tagName: urlRes.tagName,
+              title: title,
+              description: description,
+              categoryId: categoryId,
+              filename: selectedFile.name,
+              filetype: selectedFile.name.split(".").pop().toLowerCase(),
+              mimeType: getMimeType(selectedFile.name),
+              fileSize: selectedFile.size,
+            }),
+          });
+        }
 
         setProgress(100);
         document.getElementById("progressText").textContent = "上传成功！";
@@ -198,10 +267,6 @@
         document.getElementById("uploadBtn").disabled = false;
         document.getElementById("progressArea").style.display = "none";
       }
-    }
-
-    function setProgress(p) {
-      document.getElementById("progressBarFill").style.width = p + "%";
     }
 
     loadCategories();

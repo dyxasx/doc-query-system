@@ -304,6 +304,18 @@ exports.handler = async (event) => {
       return await handleUploadDocument(event);
     }
 
+    // POST /api/upload-url - 获取 GitHub Releases 直传 URL（突破 6MB 限制）
+    if (method === "POST" && segments[0] === "upload-url") {
+      if (!authPayload) return json({ error: "未登录" }, 401);
+      return await handleGetUploadUrl(body);
+    }
+
+    // POST /api/register-upload - 注册已上传的文件（保存元数据）
+    if (method === "POST" && segments[0] === "register-upload") {
+      if (!authPayload) return json({ error: "未登录" }, 401);
+      return await handleRegisterUpload(body);
+    }
+
     // DELETE /api/documents/:id - 删除文档
     if (method === "DELETE" && segments[0] === "documents" && segments[1]) {
       if (!authPayload) return json({ error: "未登录" }, 401);
@@ -485,6 +497,19 @@ async function handleDownloadFile(id) {
   const doc = (data.documents || []).find(d => d.id === id);
 
   if (!doc) return json({ error: "文档不存在" }, 404);
+
+  // GitHub Releases 直链：直接 302 跳转到原始 URL
+  if (doc.downloadUrl) {
+    return {
+      statusCode: 302,
+      headers: {
+        "Location": doc.downloadUrl,
+        ...CORS_HEADERS,
+      },
+      body: "",
+    };
+  }
+
   if (!doc.filePath) return json({ error: "文件数据不存在" }, 404);
 
   // 从 GitHub Raw 获取文件
@@ -561,6 +586,130 @@ async function handleUploadDocument(event) {
     id: docId,
     title: doc.title,
   });
+}
+
+// ========== GitHub Releases 直传（突破 6MB 限制） ==========
+
+async function handleGetUploadUrl(body) {
+  if (!GH_TOKEN) {
+    return json({ error: "GITHUB_TOKEN 未配置" }, 500);
+  }
+
+  const { filename, fileSize } = body;
+  if (!filename) return json({ error: "缺少文件名" }, 400);
+
+  // 单文件最大 100MB（GitHub Releases 限制 2GB，留足余量）
+  if (fileSize && fileSize > 100 * 1024 * 1024) {
+    return json({ error: "文件太大，最大支持100MB" }, 400);
+  }
+
+  try {
+    // 创建一个 release（draft 模式，私有 release）
+    const tagName = `upload-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const res = await fetch(
+      `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${GH_TOKEN}`,
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        body: JSON.stringify({
+          tag_name: tagName,
+          name: `Upload ${tagName}`,
+          body: "Auto-generated release for file upload",
+          draft: true,
+          prerelease: true,
+        }),
+      }
+    );
+
+    if (res.status !== 201) {
+      const errText = await res.text();
+      return json({ error: "创建 release 失败: " + errText }, 500);
+    }
+
+    const release = await res.json();
+    const uploadUrl = release.upload_url.replace(/\{.*/, `?name=${encodeURIComponent(filename)}`);
+
+    return json({
+      uploadUrl,
+      tagName,
+      releaseId: release.id,
+      releaseUrl: release.html_url,
+    });
+  } catch (e) {
+    return json({ error: "获取上传URL失败: " + e.message }, 500);
+  }
+}
+
+async function handleRegisterUpload(body) {
+  const { tagName, title, description, categoryId, filename, filetype, mimeType, fileSize } = body;
+  if (!tagName || !filename) return json({ error: "缺少参数" }, 400);
+
+  if (!GH_TOKEN) {
+    return json({ error: "GITHUB_TOKEN 未配置" }, 500);
+  }
+
+  try {
+    // 获取 release 详情，找到刚上传的 asset
+    const res = await fetch(
+      `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/releases/tags/${tagName}`,
+      {
+        headers: {
+          "Authorization": `Bearer ${GH_TOKEN}`,
+          "Accept": "application/vnd.github+json",
+        },
+      }
+    );
+
+    if (res.status !== 200) {
+      return json({ error: "获取 release 失败" }, 500);
+    }
+
+    const release = await res.json();
+    if (!release.assets || release.assets.length === 0) {
+      return json({ error: "文件未上传成功" }, 400);
+    }
+
+    const asset = release.assets[0];
+    // GitHub Releases asset 可以通过 https://github.com/{owner}/{repo}/releases/download/{tag}/{name} 直接访问
+
+    const docId = "doc-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+    const doc = {
+      id: docId,
+      title: title || filename.replace(/\.[^.]+$/, ""),
+      description: description || "",
+      categoryId: categoryId || null,
+      filename,
+      filetype: filetype || filename.split(".").pop().toLowerCase(),
+      mimeType: mimeType || "application/octet-stream",
+      fileSize: fileSize || asset.size,
+      filePath: null,
+      downloadUrl: asset.browser_download_url, // GitHub Releases 直链
+      releaseTag: tagName,
+      downloadCount: 0,
+      uploadTime: Date.now(),
+    };
+
+    const data = await loadData();
+    data.documents = data.documents || [];
+    data.documents.push(doc);
+    await saveData(data);
+
+    // 删除 draft release（可选，节省存储空间）
+    // 实际保留 release 也可以，访问通过 asset URL
+
+    return json({
+      success: true,
+      message: "上传成功",
+      id: docId,
+      title: doc.title,
+    });
+  } catch (e) {
+    return json({ error: "保存文档失败: " + e.message }, 500);
+  }
 }
 
 async function handleDeleteDocument(id) {
