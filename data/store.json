@@ -20,9 +20,9 @@
       "icon": "fa-bullhorn"
     },
     {
-      "id": "cat-4",
-      "name": "培训资料",
-      "icon": "fa-graduation-cap"
+      "id": "cat-5",
+      "name": "其他",
+      "icon": "fa-folder"
     }
   ],
   "documents": [],
