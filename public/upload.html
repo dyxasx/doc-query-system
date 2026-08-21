@@ -17,7 +17,7 @@
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
         <i class="fa-solid fa-cloud-arrow-up"></i>
         <div style="font-size:18px;margin-bottom:4px;" id="uploadZoneText">点击选择文件 或拖拽到此处</div>
-        <div style="font-size:13px;color:var(--text-light);">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 10MB）</div>
+        <div style="font-size:13px;color:var(--text-light);">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 5MB）</div>
         <input type="file" id="fileInput" style="display:none;" onchange="onFileSelected(this)">
       </div>
 
@@ -115,8 +115,8 @@
       const file = input.files && input.files[0];
       if (!file) return;
       
-      if (file.size > 10 * 1024 * 1024) {
-        showToast("文件太大，最大支持10MB", "error");
+      if (file.size > 5 * 1024 * 1024) {
+        showToast("文件太大，最大支持5MB", "error");
         return;
       }
       

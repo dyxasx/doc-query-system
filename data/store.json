@@ -1,0 +1,15 @@
+{
+  "admin": {
+    "username": "admin",
+    "password": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
+  },
+  "categories": [
+    { "id": "cat-1", "name": "规章制度", "icon": "fa-gavel" },
+    { "id": "cat-2", "name": "技术文档", "icon": "fa-code" },
+    { "id": "cat-3", "name": "通知公告", "icon": "fa-bullhorn" },
+    { "id": "cat-4", "name": "培训资料", "icon": "fa-graduation-cap" },
+    { "id": "cat-5", "name": "其他", "icon": "fa-folder" }
+  ],
+  "documents": [],
+  "initialized": true
+}

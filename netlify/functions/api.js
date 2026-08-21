@@ -1,8 +1,130 @@
-const { getStore, connectLambda } = require("@netlify/blobs");
+const crypto = require("crypto");
+
+// ========== GitHub API 持久化存储 ==========
+// 数据持久化到 GitHub 仓库的 JSON 文件，通过 GitHub REST API 读写
+// 零成本、无需额外服务、数据永久保存
+
+const GH_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+const GH_OWNER = process.env.GITHUB_OWNER || "dyxasx";
+const GH_REPO = process.env.GITHUB_REPO || "doc-query-system";
+const GH_BRANCH = process.env.GITHUB_BRANCH || "main";
+const DATA_FILE = "data/store.json";
+
+// 内存缓存（减少 API 调用）
+let _cache = null;
+let _cacheTime = 0;
+const CACHE_TTL = 5000; // 5秒缓存
+
+// ========== 默认数据 ==========
+
+function getDefaultData() {
+  return {
+    admin: {
+      username: "admin",
+      password: hashPassword("admin123"),
+    },
+    categories: [
+      { id: "cat-1", name: "规章制度", icon: "fa-gavel" },
+      { id: "cat-2", name: "技术文档", icon: "fa-code" },
+      { id: "cat-3", name: "通知公告", icon: "fa-bullhorn" },
+      { id: "cat-4", name: "培训资料", icon: "fa-graduation-cap" },
+      { id: "cat-5", name: "其他", icon: "fa-folder" },
+    ],
+    documents: [],
+    initialized: true,
+  };
+}
+
+// ========== GitHub API 操作 ==========
+
+async function githubAPI(path, method = "GET", body = null) {
+  const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`;
+  const headers = {
+    "Authorization": `Bearer ${GH_TOKEN}`,
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  const opts = { method, headers };
+  if (body) {
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(url + `?ref=${GH_BRANCH}`, opts);
+  return res;
+}
+
+async function githubRaw(path) {
+  // 获取文件原始内容
+  const url = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${path}`;
+  const headers = GH_TOKEN ? { "Authorization": `Bearer ${GH_TOKEN}` } : {};
+  const res = await fetch(url, { headers });
+  return res;
+}
+
+async function loadData() {
+  // 5秒内用缓存
+  if (_cache && Date.now() - _cacheTime < CACHE_TTL) {
+    return _cache;
+  }
+
+  try {
+    const res = await githubRaw(DATA_FILE);
+    if (res.status === 200) {
+      const text = await res.text();
+      _cache = JSON.parse(text);
+      _cacheTime = Date.now();
+      return _cache;
+    }
+  } catch (e) {
+    console.log("[store] loadData error:", e.message);
+  }
+
+  // 文件不存在，初始化默认数据
+  _cache = getDefaultData();
+  _cacheTime = Date.now();
+  await saveData(_cache);
+  return _cache;
+}
+
+async function saveData(data) {
+  _cache = data;
+  _cacheTime = Date.now();
+
+  if (!GH_TOKEN) {
+    console.log("[store] No GH_TOKEN, skip save");
+    return;
+  }
+
+  try {
+    // 先获取文件 sha（更新文件需要 sha）
+    let sha = null;
+    const getRes = await githubAPI(DATA_FILE);
+    if (getRes.status === 200) {
+      const fileData = await getRes.json();
+      sha = fileData.sha;
+    }
+
+    const content = Buffer.from(JSON.stringify(data, null, 2)).toString("base64");
+    const body = {
+      message: "update store data",
+      content,
+      branch: GH_BRANCH,
+    };
+    if (sha) body.sha = sha;
+
+    const putRes = await githubAPI(DATA_FILE, "PUT", body);
+    if (putRes.status === 200 || putRes.status === 201) {
+      console.log("[store] saveData success");
+    } else {
+      const errText = await putRes.text();
+      console.log("[store] saveData failed:", putRes.status, errText);
+    }
+  } catch (e) {
+    console.log("[store] saveData error:", e.message);
+  }
+}
 
 // ========== 工具函数 ==========
 
-// CORS 头
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
@@ -17,7 +139,6 @@ function json(data, status = 200) {
   };
 }
 
-// 简单 JWT-like token（非加密，仅用于基本认证）
 function makeToken(username) {
   const payload = { username, exp: Date.now() + 7 * 24 * 60 * 60 * 1000 };
   return Buffer.from(JSON.stringify(payload)).toString("base64url");
@@ -35,13 +156,10 @@ function verifyToken(authHeader) {
   }
 }
 
-// 简单密码哈希（Netlify Functions 无需 bcrypt，用内置 crypto）
-const crypto = require("crypto");
 function hashPassword(password) {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
 
-// 文件类型图标映射
 function getFileIcon(filetype) {
   const map = {
     pdf: "fa-file-pdf", doc: "fa-file-word", docx: "fa-file-word",
@@ -70,70 +188,6 @@ function formatSize(bytes) {
   return (bytes / 1048576).toFixed(1) + " MB";
 }
 
-// ========== 存储 Store 获取 ==========
-
-async function getDocStore() {
-  // 显式注入 context（从环境变量）
-  ensureBlobContext();
-  return getStore("documents");
-}
-async function getCatStore() {
-  ensureBlobContext();
-  return getStore("categories");
-}
-async function getConfigStore() {
-  ensureBlobContext();
-  return getStore("config");
-}
-
-let _contextInjected = false;
-function ensureBlobContext() {
-  if (_contextInjected) return;
-  // 从 Netlify Functions 提供的 env 变量构造 context
-  const siteID = process.env.NETLIFY_SITE_ID || "1d6c123c-58fb-4554-83b6-9b2e9f9d7a9b";
-  const token = process.env.NETLIFY_BLOBS_TOKEN;
-  if (token) {
-    const { setEnvironmentContext } = require("@netlify/blobs");
-    setEnvironmentContext({
-      siteID: siteID,
-      token: token,
-      apiURL: "https://api.netlify.com/api/v1/blobs",
-      edgeURL: "https://edge.netlify.com",
-    });
-    _contextInjected = true;
-  }
-}
-
-// ========== 初始化默认数据 ==========
-
-async function ensureInit() {
-  const configStore = getConfigStore();
-  const initialized = await configStore.get("initialized");
-  
-  if (!initialized) {
-    // 初始化管理员
-    await configStore.set("admin", JSON.stringify({
-      username: "admin",
-      password: hashPassword("admin123"),
-    }));
-    
-    // 初始化默认分类
-    const catStore = getCatStore();
-    const defaultCats = [
-      { id: "cat-1", name: "规章制度", icon: "fa-gavel" },
-      { id: "cat-2", name: "技术文档", icon: "fa-code" },
-      { id: "cat-3", name: "通知公告", icon: "fa-bullhorn" },
-      { id: "cat-4", name: "培训资料", icon: "fa-graduation-cap" },
-      { id: "cat-5", name: "其他", icon: "fa-folder" },
-    ];
-    for (const cat of defaultCats) {
-      await catStore.set(cat.id, JSON.stringify(cat));
-    }
-    
-    await configStore.set("initialized", "true");
-  }
-}
-
 // ========== 主处理函数 ==========
 
 exports.handler = async (event) => {
@@ -142,25 +196,9 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers: CORS_HEADERS, body: "" };
   }
 
-  // 关键：让 @netlify/blobs 知道 context
-  // connectLambda(event) 从 event.blobs 字段（base64编码的 token+url）注入 context
-  try {
-    if (event && event.blobs !== undefined && event.blobs !== null && event.blobs !== "") {
-      connectLambda(event);
-    }
-  } catch (e) {
-    console.log("[blobs] connectLambda err:", e.message);
-  }
-
-  await ensureInit();
-
-  // 兼容两种调用方式：
-  // 1. /api/documents（重写后的路径）
-  // 2. /.netlify/functions/api/documents（直接调用）
-  // 3. /api（无 path 时）
+  // 路径解析
   let rawPath = event.path || "";
-  rawPath = rawPath.split("?")[0]; // 去掉 query string
-  // 提取 /api/ 之后的部分
+  rawPath = rawPath.split("?")[0];
   let apiPart = rawPath;
   const apiMatch = rawPath.match(/\/(?:api|\.netlify\/functions\/api)\/?(.*)$/);
   if (apiMatch) {
@@ -168,14 +206,14 @@ exports.handler = async (event) => {
   }
   const segments = apiPart.split("/").filter(Boolean);
   const method = event.httpMethod;
-  
+
   // 解析 body
   let body = {};
   if (event.body) {
     try {
       body = JSON.parse(event.isBase64Encoded ? Buffer.from(event.body, "base64").toString() : event.body);
     } catch {
-      // 非JSON body（如文件上传可能用别的格式）
+      // 非 JSON body
     }
   }
 
@@ -245,7 +283,17 @@ exports.handler = async (event) => {
       return await handleStats();
     }
 
-    return json({ error: "接口不存在", path }, 404);
+    // GET /api/health - 健康检查
+    if (method === "GET" && segments[0] === "health") {
+      return json({
+        ok: true,
+        token: GH_TOKEN ? "set" : "missing",
+        repo: `${GH_OWNER}/${GH_REPO}`,
+        branch: GH_BRANCH,
+      });
+    }
+
+    return json({ error: "接口不存在", path: apiPart }, 404);
   } catch (err) {
     console.error("API Error:", err);
     return json({ error: "服务器错误: " + err.message }, 500);
@@ -256,31 +304,31 @@ exports.handler = async (event) => {
 
 async function handleLogin(body) {
   const { username, password } = body;
-  const configStore = getConfigStore();
-  const admin = JSON.parse((await configStore.get("admin")) || "{}");
-  
+  const data = await loadData();
+  const admin = data.admin || {};
+
   if (!admin.username || username !== admin.username || admin.password !== hashPassword(password)) {
     return json({ error: "用户名或密码错误" }, 401);
   }
-  
+
   const token = makeToken(username);
   return json({ token, username });
 }
 
 async function handleChangePassword(body) {
   const { oldPassword, newPassword } = body;
-  const configStore = getConfigStore();
-  const admin = JSON.parse((await configStore.get("admin")) || "{}");
-  
+  const data = await loadData();
+  const admin = data.admin || {};
+
   if (admin.password !== hashPassword(oldPassword)) {
     return json({ error: "原密码错误" }, 400);
   }
   if (!newPassword || newPassword.length < 6) {
     return json({ error: "新密码至少6位" }, 400);
   }
-  
-  admin.password = hashPassword(newPassword);
-  await configStore.set("admin", JSON.stringify(admin));
+
+  data.admin = { ...admin, password: hashPassword(newPassword) };
+  await saveData(data);
   return json({ success: true, message: "密码修改成功" });
 }
 
@@ -290,21 +338,13 @@ async function handleListDocuments(event) {
   const categoryId = queryParams.category || "";
   const page = parseInt(queryParams.page) || 1;
   const perPage = parseInt(queryParams.perPage) || 12;
-  
-  const docStore = getDocStore();
-  const listResult = await docStore.list();
-  // 兼容 blobs 和 keys 两种返回
-  const docKeys = listResult.blobs ? listResult.blobs.map(b => b.key) : (listResult.keys || []);
-  
-  let documents = [];
-  for (const key of docKeys) {
-    const doc = JSON.parse(await docStore.get(key));
-    if (doc) documents.push(doc);
-  }
-  
+
+  const data = await loadData();
+  let documents = data.documents || [];
+
   // 过滤
   if (keyword) {
-    documents = documents.filter(d => 
+    documents = documents.filter(d =>
       (d.title || "").toLowerCase().includes(keyword) ||
       (d.description || "").toLowerCase().includes(keyword)
     );
@@ -312,55 +352,55 @@ async function handleListDocuments(event) {
   if (categoryId) {
     documents = documents.filter(d => d.categoryId === categoryId);
   }
-  
+
   // 排序（按上传时间倒序）
   documents.sort((a, b) => (b.uploadTime || 0) - (a.uploadTime || 0));
-  
+
   // 分页
   const total = documents.length;
   const totalPages = Math.max(1, Math.ceil(total / perPage));
   const start = (page - 1) * perPage;
   const paged = documents.slice(start, start + perPage);
-  
+
   // 获取分类信息
-  const catStore = getCatStore();
-  const catListResult = await catStore.list();
-  const catKeys = catListResult.blobs ? catListResult.blobs.map(b => b.key) : (catListResult.keys || []);
   const catMap = {};
-  for (const key of catKeys) {
-    const cat = JSON.parse(await catStore.get(key));
-    if (cat) catMap[cat.id] = cat;
+  for (const cat of (data.categories || [])) {
+    catMap[cat.id] = cat;
   }
-  
-  // 附加分类信息和格式化
-  const result = paged.map(d => ({
-    ...d,
-    category: catMap[d.categoryId] || null,
-    fileSizeFormatted: formatSize(d.fileSize || 0),
-    fileIcon: getFileIcon(d.filetype),
-    isPreviewable: isPreviewable(d.filetype),
-    uploadTimeFormatted: new Date(d.uploadTime).toLocaleString("zh-CN"),
-  }));
-  
+
+  // 附加分类信息和格式化（不返回 fileData，减少传输量）
+  const result = paged.map(d => {
+    const { fileData, ...rest } = d;
+    return {
+      ...rest,
+      category: catMap[d.categoryId] || null,
+      fileSizeFormatted: formatSize(d.fileSize || 0),
+      fileIcon: getFileIcon(d.filetype),
+      isPreviewable: isPreviewable(d.filetype),
+      uploadTimeFormatted: new Date(d.uploadTime).toLocaleString("zh-CN"),
+    };
+  });
+
   return json({ documents: result, total, page, totalPages, perPage });
 }
 
 async function handleGetDocument(id) {
-  const docStore = getDocStore();
-  const doc = JSON.parse((await docStore.get(id)) || "null");
-  
+  const data = await loadData();
+  const doc = (data.documents || []).find(d => d.id === id);
+
   if (!doc) return json({ error: "文档不存在" }, 404);
-  
+
   // 增加下载次数
   doc.downloadCount = (doc.downloadCount || 0) + 1;
-  await docStore.set(id, JSON.stringify(doc));
-  
+  await saveData(data);
+
   // 获取分类
-  const catStore = getCatStore();
-  const cat = doc.categoryId ? JSON.parse((await catStore.get(doc.categoryId)) || "null") : null;
-  
+  const cat = doc.categoryId ? (data.categories || []).find(c => c.id === doc.categoryId) : null;
+
+  // 不返回 fileData
+  const { fileData, ...docInfo } = doc;
   return json({
-    ...doc,
+    ...docInfo,
     category: cat,
     fileSizeFormatted: formatSize(doc.fileSize || 0),
     fileIcon: getFileIcon(doc.filetype),
@@ -371,15 +411,14 @@ async function handleGetDocument(id) {
 }
 
 async function handleDownloadFile(id) {
-  const docStore = getDocStore();
-  const doc = JSON.parse((await docStore.get(id)) || "null");
-  
+  const data = await loadData();
+  const doc = (data.documents || []).find(d => d.id === id);
+
   if (!doc) return json({ error: "文档不存在" }, 404);
   if (!doc.fileData) return json({ error: "文件数据不存在" }, 404);
-  
-  // doc.fileData 是 base64 编码的文件内容
+
   const buffer = Buffer.from(doc.fileData, "base64");
-  
+
   return {
     statusCode: 200,
     headers: {
@@ -393,27 +432,23 @@ async function handleDownloadFile(id) {
 }
 
 async function handleUploadDocument(event) {
-  // 文件上传用 multipart 或 JSON base64
-  // 这里用 JSON base64 方式（前端把文件转 base64 发送）
   const rawBody = JSON.parse(event.body || "{}");
-  
   const { title, description, categoryId, filename, filetype, mimeType, fileData } = rawBody;
-  
+
   if (!filename || !fileData) {
     return json({ error: "缺少文件信息" }, 400);
   }
-  
-  // 计算 base64 数据大小
+
   const buffer = Buffer.from(fileData, "base64");
   const fileSize = buffer.length;
-  
-  // 限制 10MB（Netlify Functions 限制）
-  if (fileSize > 10 * 1024 * 1024) {
-    return json({ error: "文件太大，最大支持10MB（Netlify函数限制）" }, 400);
+
+  // 限制 5MB（GitHub API + Netlify 函数限制）
+  if (fileSize > 5 * 1024 * 1024) {
+    return json({ error: "文件太大，最大支持5MB" }, 400);
   }
-  
+
   const docId = "doc-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
-  
+
   const doc = {
     id: docId,
     title: title || filename.replace(/\.[^.]+$/, ""),
@@ -423,14 +458,18 @@ async function handleUploadDocument(event) {
     filetype: filetype || filename.split(".").pop().toLowerCase(),
     mimeType: mimeType || "application/octet-stream",
     fileSize,
-    fileData, // base64 编码的文件内容
+    fileData,
     downloadCount: 0,
     uploadTime: Date.now(),
   };
-  
-  const docStore = getDocStore();
-  await docStore.set(docId, JSON.stringify(doc));
-  
+
+  const data = await loadData();
+  data.documents = data.documents || [];
+  data.documents.push(doc);
+  await saveData(data);
+
+  // 返回时去掉 fileData
+  const { fileData: _, ...result } = doc;
   return json({
     success: true,
     message: "上传成功",
@@ -440,108 +479,84 @@ async function handleUploadDocument(event) {
 }
 
 async function handleDeleteDocument(id) {
-  const docStore = getDocStore();
-  const doc = JSON.parse((await docStore.get(id)) || "null");
-  
-  if (!doc) return json({ error: "文档不存在" }, 404);
-  
-  await docStore.delete(id);
+  const data = await loadData();
+  const idx = (data.documents || []).findIndex(d => d.id === id);
+
+  if (idx === -1) return json({ error: "文档不存在" }, 404);
+
+  const doc = data.documents[idx];
+  data.documents.splice(idx, 1);
+  await saveData(data);
+
   return json({ success: true, message: `文档「${doc.title}」已删除` });
 }
 
 async function handleListCategories() {
-  const catStore = getCatStore();
-  const { blobs } = await catStore.list();
-  
-  const categories = [];
-  const docStore = getDocStore();
-  const docListResult = await docStore.list();
-  const docKeys2 = docListResult.blobs ? docListResult.blobs.map(b => b.key) : (docListResult.keys || []);
-  
-  // 获取所有文档以统计各分类文档数
+  const data = await loadData();
+  const categories = data.categories || [];
+
+  // 统计各分类文档数
   const docCountMap = {};
-  for (const key of docKeys2) {
-    const doc = JSON.parse(await docStore.get(key));
-    if (doc && doc.categoryId) {
+  for (const doc of (data.documents || [])) {
+    if (doc.categoryId) {
       docCountMap[doc.categoryId] = (docCountMap[doc.categoryId] || 0) + 1;
     }
   }
-  
-  const catListResult2 = await catStore.list();
-  const catKeys2 = catListResult2.blobs ? catListResult2.blobs.map(b => b.key) : (catListResult2.keys || []);
-  for (const key of catKeys2) {
-    const cat = JSON.parse(await catStore.get(key));
-    if (cat) {
-      categories.push({ ...cat, docCount: docCountMap[cat.id] || 0 });
-    }
-  }
-  
-  categories.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-  return json({ categories });
+
+  const result = categories.map(cat => ({
+    ...cat,
+    docCount: docCountMap[cat.id] || 0,
+  }));
+
+  result.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  return json({ categories: result });
 }
 
 async function handleAddCategory(body) {
   const { name, icon } = body;
   if (!name) return json({ error: "分类名称不能为空" }, 400);
-  
-  const catStore = getCatStore();
-  const checkList = await catStore.list();
-  const checkKeys = checkList.blobs ? checkList.blobs.map(b => b.key) : (checkList.keys || []);
-  
+
+  const data = await loadData();
+  const categories = data.categories || [];
+
   // 检查重名
-  for (const key of checkKeys) {
-    const cat = JSON.parse(await catStore.get(key));
-    if (cat && cat.name === name) {
-      return json({ error: "分类已存在" }, 400);
-    }
+  if (categories.some(c => c.name === name)) {
+    return json({ error: "分类已存在" }, 400);
   }
-  
+
   const catId = "cat-" + Date.now();
   const cat = { id: catId, name, icon: icon || "fa-folder" };
-  await catStore.set(catId, JSON.stringify(cat));
-  
+  data.categories = [...categories, cat];
+  await saveData(data);
+
   return json({ success: true, message: "分类添加成功", category: cat });
 }
 
 async function handleDeleteCategory(id) {
-  const catStore = getCatStore();
-  await catStore.delete(id);
+  const data = await loadData();
+  data.categories = (data.categories || []).filter(c => c.id !== id);
+  await saveData(data);
+
   return json({ success: true, message: "分类已删除" });
 }
 
 async function handleStats() {
-  const docStore = getDocStore();
-  const catStore = getCatStore();
-  
-  const docsList = await docStore.list();
-  const docsKeys = docsList.blobs ? docsList.blobs.map(b => b.key) : (docsList.keys || []);
-  const catsList = await catStore.list();
-  const catsKeys = catsList.blobs ? catsList.blobs.map(b => b.key) : (catsList.keys || []);
-  
+  const data = await loadData();
+  const documents = data.documents || [];
+  const categories = data.categories || [];
+
   let totalSize = 0;
   let totalDownloads = 0;
-  for (const key of docsKeys) {
-    const doc = JSON.parse(await docStore.get(key));
-    if (doc) {
-      totalSize += doc.fileSize || 0;
-      totalDownloads += doc.downloadCount || 0;
-    }
+  for (const doc of documents) {
+    totalSize += doc.fileSize || 0;
+    totalDownloads += doc.downloadCount || 0;
   }
-  
+
   return json({
-    totalDocs: docs.length,
-    totalCategories: cats.length,
+    totalDocs: documents.length,
+    totalCategories: categories.length,
     totalDownloads,
     totalSize,
     totalSizeFormatted: formatSize(totalSize),
   });
 }
-
-
-// 调试：直接验证 getStore 返回值
-console.log("[startup] getStore function:", typeof getStore);
-console.log("[startup] connectLambda function:", typeof connectLambda);
-console.log("[startup] global netlifyBlobsContext:", typeof globalThis.netlifyBlobsContext, globalThis.netlifyBlobsContext);
-console.log("[startup] env.NETLIFY_BLOBS_CONTEXT:", process.env.NETLIFY_BLOBS_CONTEXT ? "exists" : "missing");
-console.log("[startup] env.NETLIFY_SITE_ID:", process.env.NETLIFY_SITE_ID ? "exists" : "missing");
-console.log("[startup] env.NETLIFY_BLOBS_TOKEN:", process.env.NETLIFY_BLOBS_TOKEN ? "exists" : "missing");

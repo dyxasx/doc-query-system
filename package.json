@@ -6,7 +6,5 @@
     "dev": "npx netlify-cli dev",
     "build": "echo 'Static site, no build step needed'"
   },
-  "dependencies": {
-    "@netlify/blobs": "^8.2.0"
-  }
+  "dependencies": {}
 }
