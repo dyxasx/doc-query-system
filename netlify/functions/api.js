@@ -73,13 +73,35 @@ function formatSize(bytes) {
 // ========== 存储 Store 获取 ==========
 
 async function getDocStore() {
+  // 显式注入 context（从环境变量）
+  ensureBlobContext();
   return getStore("documents");
 }
 async function getCatStore() {
+  ensureBlobContext();
   return getStore("categories");
 }
 async function getConfigStore() {
+  ensureBlobContext();
   return getStore("config");
+}
+
+let _contextInjected = false;
+function ensureBlobContext() {
+  if (_contextInjected) return;
+  // 从 Netlify Functions 提供的 env 变量构造 context
+  const siteID = process.env.NETLIFY_SITE_ID || "1d6c123c-58fb-4554-83b6-9b2e9f9d7a9b";
+  const token = process.env.NETLIFY_BLOBS_TOKEN;
+  if (token) {
+    const { setEnvironmentContext } = require("@netlify/blobs");
+    setEnvironmentContext({
+      siteID: siteID,
+      token: token,
+      apiURL: "https://api.netlify.com/api/v1/blobs",
+      edgeURL: "https://edge.netlify.com",
+    });
+    _contextInjected = true;
+  }
 }
 
 // ========== 初始化默认数据 ==========
@@ -118,6 +140,14 @@ exports.handler = async (event) => {
   // CORS 预检
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers: CORS_HEADERS, body: "" };
+  }
+
+  // 调试：打印所有 env 变量名（不打印值，安全）
+  if (!global._logged_env) {
+    global._logged_env = true;
+    console.log("ENV keys:", Object.keys(process.env).filter(k => k.includes("NETLIFY") || k.includes("BLOB")).join(","));
+    console.log("Has event.blobs:", event.blobs !== undefined);
+    console.log("Event keys:", Object.keys(event));
   }
 
   // 每次请求都用 connectLambda(event) 注入 Blobs 上下文

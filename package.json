@@ -7,6 +7,6 @@
     "build": "echo 'Static site, no build step needed'"
   },
   "dependencies": {
-    "@netlify/blobs": "^8.0.0"
+    "@netlify/blobs": "^8.2.0"
   }
 }
