@@ -1,0 +1,22 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+
+# 前端路由 - 所有页面由 public 目录提供静态文件
+# API 路由 - 由 netlify/functions 目录提供无服务器函数
+
+# 重写规则：/api/* 请求转发到 Netlify Functions
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# SPA 回退（可选）
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false

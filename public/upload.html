@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>上传文档</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="navbar"></div>
+  <div class="container" style="max-width:700px;">
+    <h2 style="margin-bottom:24px;"><i class="fa-solid fa-upload"></i> 上传文档</h2>
+    
+    <div class="search-section">
+      <!-- 文件选择区 -->
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+        <div style="font-size:18px;margin-bottom:4px;" id="uploadZoneText">点击选择文件 或拖拽到此处</div>
+        <div style="font-size:13px;color:var(--text-light);">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 10MB）</div>
+        <input type="file" id="fileInput" style="display:none;" onchange="onFileSelected(this)">
+      </div>
+
+      <!-- 文件信息表单 -->
+      <div id="fileForm" style="display:none;margin-top:24px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:12px 16px;background:var(--bg);border-radius:8px;">
+          <i class="fa-solid fa-file" id="filePreviewIcon" style="font-size:24px;color:var(--primary);"></i>
+          <div style="flex:1;">
+            <div style="font-weight:500;" id="fileNameDisplay"></div>
+            <div style="font-size:13px;color:var(--text-light);" id="fileSizeDisplay"></div>
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="resetFile()"><i class="fa-solid fa-xmark"></i> 移除</button>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">文档标题</label>
+          <input type="text" class="form-control" id="title" placeholder="留空则使用文件名">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">文档描述</label>
+          <textarea class="form-control" id="description" placeholder="简要描述文档内容（可选）"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">所属分类</label>
+          <select class="form-control" id="categorySelect"></select>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" id="uploadBtn" onclick="uploadFile()">
+          <i class="fa-solid fa-upload"></i> 开始上传
+        </button>
+      </div>
+
+      <!-- 上传进度 -->
+      <div id="progressArea" style="display:none;margin-top:20px;">
+        <div style="background:var(--bg);border-radius:8px;padding:20px;text-align:center;">
+          <i class="fa-solid fa-spinner fa-spin" style="font-size:32px;color:var(--primary);"></i>
+          <div style="margin-top:12px;" id="progressText">正在上传...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+  <script>
+    if (!Auth.isLoggedIn()) { location.href = "/login.html"; }
+    document.getElementById("navbar").innerHTML = renderNavbar("admin");
+
+    let selectedFile = null;
+
+    // 文件图标映射
+    function getFileIcon(filename) {
+      var ext = filename.split(".").pop().toLowerCase();
+      var map = {
+        pdf:"fa-file-pdf", doc:"fa-file-word", docx:"fa-file-word",
+        xls:"fa-file-excel", xlsx:"fa-file-excel", ppt:"fa-file-powerpoint", pptx:"fa-file-powerpoint",
+        txt:"fa-file-lines", md:"fa-file-lines", csv:"fa-file-csv",
+        png:"fa-file-image", jpg:"fa-file-image", jpeg:"fa-file-image",
+        gif:"fa-file-image", bmp:"fa-file-image", webp:"fa-file-image", svg:"fa-file-image",
+        zip:"fa-file-zipper", rar:"fa-file-zipper", "7z":"fa-file-zipper",
+      };
+      return map[ext] || "fa-file";
+    }
+
+    // 文件类型检测
+    function getMimeType(filename) {
+      var ext = filename.split(".").pop().toLowerCase();
+      var map = {
+        pdf:"application/pdf",
+        txt:"text/plain", md:"text/plain", csv:"text/csv",
+        png:"image/png", jpg:"image/jpeg", jpeg:"image/jpeg",
+        gif:"image/gif", bmp:"image/bmp", webp:"image/webp", svg:"image/svg+xml",
+        doc:"application/msword", docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        xls:"application/vnd.ms-excel", xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ppt:"application/vnd.ms-powerpoint", pptx:"application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      };
+      return map[ext] || "application/octet-stream";
+    }
+
+    // 拖拽上传
+    const uploadZone = document.getElementById("uploadZone");
+    uploadZone.addEventListener("dragover", function(e) { e.preventDefault(); uploadZone.classList.add("dragover"); });
+    uploadZone.addEventListener("dragleave", function() { uploadZone.classList.remove("dragover"); });
+    uploadZone.addEventListener("drop", function(e) {
+      e.preventDefault();
+      uploadZone.classList.remove("dragover");
+      if (e.dataTransfer.files.length) {
+        document.getElementById("fileInput").files = e.dataTransfer.files;
+        onFileSelected({ files: e.dataTransfer.files });
+      }
+    });
+
+    function onFileSelected(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      
+      if (file.size > 10 * 1024 * 1024) {
+        showToast("文件太大，最大支持10MB", "error");
+        return;
+      }
+      
+      selectedFile = file;
+      document.getElementById("uploadZoneText").textContent = file.name;
+      document.getElementById("filePreviewIcon").className = "fa-solid " + getFileIcon(file.name);
+      document.getElementById("fileNameDisplay").textContent = file.name;
+      document.getElementById("fileSizeDisplay").textContent = formatSize(file.size);
+      document.getElementById("fileForm").style.display = "block";
+      
+      // 自动填充标题
+      document.getElementById("title").value = file.name.replace(/\.[^.]+$/, "");
+    }
+
+    function resetFile() {
+      selectedFile = null;
+      document.getElementById("fileInput").value = "";
+      document.getElementById("uploadZoneText").textContent = "点击选择文件 或拖拽到此处";
+      document.getElementById("fileForm").style.display = "none";
+    }
+
+    // 加载分类
+    async function loadCategories() {
+      try {
+        const data = await api("/categories");
+        const select = document.getElementById("categorySelect");
+        select.innerHTML = '<option value="">-- 不选择分类 --</option>' +
+          data.categories.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join("");
+      } catch(e) { console.error(e); }
+    }
+
+    // 上传文件
+    async function uploadFile() {
+      if (!selectedFile) { showToast("请选择文件", "error"); return; }
+      
+      const title = document.getElementById("title").value.trim();
+      const description = document.getElementById("description").value.trim();
+      const categoryId = document.getElementById("categorySelect").value;
+      
+      document.getElementById("uploadBtn").disabled = true;
+      document.getElementById("progressArea").style.display = "block";
+      document.getElementById("progressText").textContent = "正在读取文件...";
+      
+      try {
+        // 读取文件为 base64
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+          document.getElementById("progressText").textContent = "正在上传...";
+          
+          // base64 数据（去掉 data:xxx;base64, 前缀）
+          const base64Data = e.target.result.split(",")[1];
+          
+          try {
+            await api("/documents", {
+              method: "POST",
+              body: JSON.stringify({
+                title: title,
+                description: description,
+                categoryId: categoryId,
+                filename: selectedFile.name,
+                filetype: selectedFile.name.split(".").pop().toLowerCase(),
+                mimeType: getMimeType(selectedFile.name),
+                fileData: base64Data,
+              }),
+            });
+            showToast("上传成功！");
+            setTimeout(function() { location.href = "/admin.html"; }, 1000);
+          } catch(err) {
+            showToast(err.message, "error");
+            document.getElementById("uploadBtn").disabled = false;
+            document.getElementById("progressArea").style.display = "none";
+          }
+        };
+        reader.onerror = function() {
+          showToast("文件读取失败", "error");
+          document.getElementById("uploadBtn").disabled = false;
+          document.getElementById("progressArea").style.display = "none";
+        };
+        reader.readAsDataURL(selectedFile);
+      } catch(e) {
+        showToast(e.message, "error");
+        document.getElementById("uploadBtn").disabled = false;
+        document.getElementById("progressArea").style.display = "none";
+      }
+    }
+
+    loadCategories();
+  </script>
+</body>
+</html>
