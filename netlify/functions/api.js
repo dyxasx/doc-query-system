@@ -1,4 +1,4 @@
-const { getStore } = require("@netlify/blobs");
+const { getStore, connectLambda } = require("@netlify/blobs");
 
 // ========== 工具函数 ==========
 
@@ -73,14 +73,13 @@ function formatSize(bytes) {
 // ========== 存储 Store 获取 ==========
 
 async function getDocStore() {
-  // 在 Netlify Functions 部署环境中，直接调用 getStore 即可（使用上下文 token）
-  return getStore({ name: "documents", consistency: "strong" });
+  return getStore("documents");
 }
 async function getCatStore() {
-  return getStore({ name: "categories", consistency: "strong" });
+  return getStore("categories");
 }
 async function getConfigStore() {
-  return getStore({ name: "config", consistency: "strong" });
+  return getStore("config");
 }
 
 // ========== 初始化默认数据 ==========
@@ -119,6 +118,15 @@ exports.handler = async (event) => {
   // CORS 预检
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers: CORS_HEADERS, body: "" };
+  }
+
+  // 关键：让 @netlify/blobs 知道 token 和 siteID
+  if (event.headers && event.headers["netlify-blobs-store"] || (event.headers && Object.keys(event.headers).some(k => k.toLowerCase().includes("netlify")))) {
+    try { connectLambda(event); } catch (e) { /* ignore */ }
+  }
+  // 兼容直接调用：手动从环境变量设置
+  if (process.env.NETLIFY_BLOBS_SITE_ID && process.env.NETLIFY_BLOBS_TOKEN) {
+    try { connectLambda(event); } catch (e) { /* ignore */ }
   }
 
   await ensureInit();
