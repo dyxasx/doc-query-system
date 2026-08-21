@@ -5,14 +5,14 @@
   },
   "categories": [
     {
+      "id": "cat-1",
+      "name": "规章制度",
+      "icon": "fa-gavel"
+    },
+    {
       "id": "cat-2",
       "name": "技术文档",
       "icon": "fa-code"
-    },
-    {
-      "id": "cat-3",
-      "name": "通知公告",
-      "icon": "fa-bullhorn"
     },
     {
       "id": "cat-4",
