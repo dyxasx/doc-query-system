@@ -73,13 +73,14 @@ function formatSize(bytes) {
 // ========== 存储 Store 获取 ==========
 
 async function getDocStore() {
-  return getStore("documents");
+  // 在 Netlify Functions 部署环境中，直接调用 getStore 即可（使用上下文 token）
+  return getStore({ name: "documents", consistency: "strong" });
 }
 async function getCatStore() {
-  return getStore("categories");
+  return getStore({ name: "categories", consistency: "strong" });
 }
 async function getConfigStore() {
-  return getStore("config");
+  return getStore({ name: "config", consistency: "strong" });
 }
 
 // ========== 初始化默认数据 ==========
@@ -260,10 +261,12 @@ async function handleListDocuments(event) {
   const perPage = parseInt(queryParams.perPage) || 12;
   
   const docStore = getDocStore();
-  const { blobs } = await docStore.list();
+  const listResult = await docStore.list();
+  // 兼容 blobs 和 keys 两种返回
+  const docKeys = listResult.blobs ? listResult.blobs.map(b => b.key) : (listResult.keys || []);
   
   let documents = [];
-  for (const { key } of blobs) {
+  for (const key of docKeys) {
     const doc = JSON.parse(await docStore.get(key));
     if (doc) documents.push(doc);
   }
@@ -290,9 +293,10 @@ async function handleListDocuments(event) {
   
   // 获取分类信息
   const catStore = getCatStore();
-  const catList = await catStore.list();
+  const catListResult = await catStore.list();
+  const catKeys = catListResult.blobs ? catListResult.blobs.map(b => b.key) : (catListResult.keys || []);
   const catMap = {};
-  for (const { key } of catList.blobs) {
+  for (const key of catKeys) {
     const cat = JSON.parse(await catStore.get(key));
     if (cat) catMap[cat.id] = cat;
   }
@@ -420,18 +424,21 @@ async function handleListCategories() {
   
   const categories = [];
   const docStore = getDocStore();
-  const docList = await docStore.list();
+  const docListResult = await docStore.list();
+  const docKeys2 = docListResult.blobs ? docListResult.blobs.map(b => b.key) : (docListResult.keys || []);
   
   // 获取所有文档以统计各分类文档数
   const docCountMap = {};
-  for (const { key } of docList.blobs) {
+  for (const key of docKeys2) {
     const doc = JSON.parse(await docStore.get(key));
     if (doc && doc.categoryId) {
       docCountMap[doc.categoryId] = (docCountMap[doc.categoryId] || 0) + 1;
     }
   }
   
-  for (const { key } of blobs) {
+  const catListResult2 = await catStore.list();
+  const catKeys2 = catListResult2.blobs ? catListResult2.blobs.map(b => b.key) : (catListResult2.keys || []);
+  for (const key of catKeys2) {
     const cat = JSON.parse(await catStore.get(key));
     if (cat) {
       categories.push({ ...cat, docCount: docCountMap[cat.id] || 0 });
@@ -447,10 +454,11 @@ async function handleAddCategory(body) {
   if (!name) return json({ error: "分类名称不能为空" }, 400);
   
   const catStore = getCatStore();
-  const { blobs } = await catStore.list();
+  const checkList = await catStore.list();
+  const checkKeys = checkList.blobs ? checkList.blobs.map(b => b.key) : (checkList.keys || []);
   
   // 检查重名
-  for (const { key } of blobs) {
+  for (const key of checkKeys) {
     const cat = JSON.parse(await catStore.get(key));
     if (cat && cat.name === name) {
       return json({ error: "分类已存在" }, 400);
@@ -474,12 +482,14 @@ async function handleStats() {
   const docStore = getDocStore();
   const catStore = getCatStore();
   
-  const { blobs: docs } = await docStore.list();
-  const { blobs: cats } = await catStore.list();
+  const docsList = await docStore.list();
+  const docsKeys = docsList.blobs ? docsList.blobs.map(b => b.key) : (docsList.keys || []);
+  const catsList = await catStore.list();
+  const catsKeys = catsList.blobs ? catsList.blobs.map(b => b.key) : (catsList.keys || []);
   
   let totalSize = 0;
   let totalDownloads = 0;
-  for (const { key } of docs) {
+  for (const key of docsKeys) {
     const doc = JSON.parse(await docStore.get(key));
     if (doc) {
       totalSize += doc.fileSize || 0;
