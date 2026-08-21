@@ -5,10 +5,7 @@
 [build.environment]
   NODE_VERSION = "18"
 
-# 前端路由 - 所有页面由 public 目录提供静态文件
-# API 路由 - 由 netlify/functions 目录提供无服务器函数
-
-# 重写规则：/api/* 请求转发到 Netlify Functions
+# 重写规则：/api/* 请求转发到 Netlify Functions（force=true 优先匹配）
 [[redirects]]
   from = "/api"
   to = "/.netlify/functions/api"
@@ -21,7 +18,21 @@
   status = 200
   force = true
 
-# SPA 回退（HTML 页面找不到时回退到 index.html）
+# Functions 路径直接转发
+[[redirects]]
+  from = "/.netlify/functions"
+  to = "/.netlify/functions/api"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+# SPA 回退：HTML 页面找不到时回退到 index.html（force=false，避免覆盖 functions）
+# 排除 .html 和 API 路径
 [[redirects]]
   from = "/*"
   to = "/index.html"

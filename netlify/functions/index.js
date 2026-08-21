@@ -283,7 +283,6 @@ exports.handler = async (event) => {
   const authPayload = verifyToken(event.headers.authorization || event.headers.Authorization);
 
   try {
-    console.log("[debug] method=" + method + " segments=" + JSON.stringify(segments) + " rawPath=" + rawPath);
     // GET /api/documents - 查询文档列表
     if (method === "GET" && (segments[0] === "documents" || segments.length === 0)) {
       return await handleListDocuments(event);
