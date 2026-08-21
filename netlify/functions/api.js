@@ -122,8 +122,19 @@ exports.handler = async (event) => {
 
   await ensureInit();
 
-  const path = event.path.replace(/^\/api\/?/, "").replace(/^\/?\.netlify\/functions\/api\/?/, "");
-  const segments = path.split("/").filter(Boolean);
+  // 兼容两种调用方式：
+  // 1. /api/documents（重写后的路径）
+  // 2. /.netlify/functions/api/documents（直接调用）
+  // 3. /api（无 path 时）
+  let rawPath = event.path || "";
+  rawPath = rawPath.split("?")[0]; // 去掉 query string
+  // 提取 /api/ 之后的部分
+  let apiPart = rawPath;
+  const apiMatch = rawPath.match(/\/(?:api|\.netlify\/functions\/api)\/?(.*)$/);
+  if (apiMatch) {
+    apiPart = "/" + apiMatch[1];
+  }
+  const segments = apiPart.split("/").filter(Boolean);
   const method = event.httpMethod;
   
   // 解析 body
