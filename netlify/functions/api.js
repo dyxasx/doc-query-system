@@ -142,21 +142,14 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers: CORS_HEADERS, body: "" };
   }
 
-  // 调试：打印所有 env 变量名（不打印值，安全）
-  if (!global._logged_env) {
-    global._logged_env = true;
-    console.log("ENV keys:", Object.keys(process.env).filter(k => k.includes("NETLIFY") || k.includes("BLOB")).join(","));
-    console.log("Has event.blobs:", event.blobs !== undefined);
-    console.log("Event keys:", Object.keys(event));
-  }
-
-  // 每次请求都用 connectLambda(event) 注入 Blobs 上下文
+  // 关键：让 @netlify/blobs 知道 context
+  // connectLambda(event) 从 event.blobs 字段（base64编码的 token+url）注入 context
   try {
-    if (event && event.blobs !== undefined) {
+    if (event && event.blobs !== undefined && event.blobs !== null && event.blobs !== "") {
       connectLambda(event);
     }
   } catch (e) {
-    console.log("connectLambda failed:", e.message);
+    console.log("[blobs] connectLambda err:", e.message);
   }
 
   await ensureInit();
@@ -543,3 +536,12 @@ async function handleStats() {
     totalSizeFormatted: formatSize(totalSize),
   });
 }
+
+
+// 调试：直接验证 getStore 返回值
+console.log("[startup] getStore function:", typeof getStore);
+console.log("[startup] connectLambda function:", typeof connectLambda);
+console.log("[startup] global netlifyBlobsContext:", typeof globalThis.netlifyBlobsContext, globalThis.netlifyBlobsContext);
+console.log("[startup] env.NETLIFY_BLOBS_CONTEXT:", process.env.NETLIFY_BLOBS_CONTEXT ? "exists" : "missing");
+console.log("[startup] env.NETLIFY_SITE_ID:", process.env.NETLIFY_SITE_ID ? "exists" : "missing");
+console.log("[startup] env.NETLIFY_BLOBS_TOKEN:", process.env.NETLIFY_BLOBS_TOKEN ? "exists" : "missing");
