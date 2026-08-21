@@ -11,17 +11,15 @@
   <div id="navbar"></div>
   <div class="container" style="max-width:700px;">
     <h2 style="margin-bottom:24px;"><i class="fa-solid fa-upload"></i> 上传文档</h2>
-    
+
     <div class="search-section">
-      <!-- 文件选择区 -->
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
         <i class="fa-solid fa-cloud-arrow-up"></i>
         <div style="font-size:18px;margin-bottom:4px;" id="uploadZoneText">点击选择文件 或拖拽到此处</div>
-        <div style="font-size:13px;color:var(--text-light);">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 5MB）</div>
+        <div style="font-size:13px;color:var(--text-light);">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 4MB，建议图片用 PDF/Word 先压缩）</div>
         <input type="file" id="fileInput" style="display:none;" onchange="onFileSelected(this)">
       </div>
 
-      <!-- 文件信息表单 -->
       <div id="fileForm" style="display:none;margin-top:24px;">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:12px 16px;background:var(--bg);border-radius:8px;">
           <i class="fa-solid fa-file" id="filePreviewIcon" style="font-size:24px;color:var(--primary);"></i>
@@ -52,11 +50,13 @@
         </button>
       </div>
 
-      <!-- 上传进度 -->
       <div id="progressArea" style="display:none;margin-top:20px;">
         <div style="background:var(--bg);border-radius:8px;padding:20px;text-align:center;">
           <i class="fa-solid fa-spinner fa-spin" style="font-size:32px;color:var(--primary);"></i>
           <div style="margin-top:12px;" id="progressText">正在上传...</div>
+          <div id="progressBar" style="margin-top:12px;background:#e5e7eb;border-radius:4px;height:8px;overflow:hidden;">
+            <div id="progressBarFill" style="height:100%;background:var(--primary);width:0%;transition:width 0.3s;"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -69,7 +69,6 @@
 
     let selectedFile = null;
 
-    // 文件图标映射
     function getFileIcon(filename) {
       var ext = filename.split(".").pop().toLowerCase();
       var map = {
@@ -83,7 +82,6 @@
       return map[ext] || "fa-file";
     }
 
-    // 文件类型检测
     function getMimeType(filename) {
       var ext = filename.split(".").pop().toLowerCase();
       var map = {
@@ -98,7 +96,6 @@
       return map[ext] || "application/octet-stream";
     }
 
-    // 拖拽上传
     const uploadZone = document.getElementById("uploadZone");
     uploadZone.addEventListener("dragover", function(e) { e.preventDefault(); uploadZone.classList.add("dragover"); });
     uploadZone.addEventListener("dragleave", function() { uploadZone.classList.remove("dragover"); });
@@ -114,20 +111,18 @@
     function onFileSelected(input) {
       const file = input.files && input.files[0];
       if (!file) return;
-      
-      if (file.size > 5 * 1024 * 1024) {
-        showToast("文件太大，最大支持5MB", "error");
+
+      if (file.size > 4 * 1024 * 1024) {
+        showToast("文件太大，最大支持4MB（base64 编码后约 5.3MB，受 Netlify 函数限制）。请先用 PDF/Word 压缩工具压缩后再上传", "error");
         return;
       }
-      
+
       selectedFile = file;
       document.getElementById("uploadZoneText").textContent = file.name;
       document.getElementById("filePreviewIcon").className = "fa-solid " + getFileIcon(file.name);
       document.getElementById("fileNameDisplay").textContent = file.name;
       document.getElementById("fileSizeDisplay").textContent = formatSize(file.size);
       document.getElementById("fileForm").style.display = "block";
-      
-      // 自动填充标题
       document.getElementById("title").value = file.name.replace(/\.[^.]+$/, "");
     }
 
@@ -138,7 +133,6 @@
       document.getElementById("fileForm").style.display = "none";
     }
 
-    // 加载分类
     async function loadCategories() {
       try {
         const data = await api("/categories");
@@ -148,59 +142,66 @@
       } catch(e) { console.error(e); }
     }
 
-    // 上传文件
+    // 把 ArrayBuffer 转 base64（分块避免堆栈溢出）
+    function arrayBufferToBase64(buffer) {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      const chunkSize = 8192;
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+      }
+      return btoa(binary);
+    }
+
     async function uploadFile() {
       if (!selectedFile) { showToast("请选择文件", "error"); return; }
-      
+
       const title = document.getElementById("title").value.trim();
       const description = document.getElementById("description").value.trim();
       const categoryId = document.getElementById("categorySelect").value;
-      
+
       document.getElementById("uploadBtn").disabled = true;
       document.getElementById("progressArea").style.display = "block";
       document.getElementById("progressText").textContent = "正在读取文件...";
-      
+      setProgress(10);
+
       try {
-        // 读取文件为 base64
-        const reader = new FileReader();
-        reader.onload = async function(e) {
-          document.getElementById("progressText").textContent = "正在上传...";
-          
-          // base64 数据（去掉 data:xxx;base64, 前缀）
-          const base64Data = e.target.result.split(",")[1];
-          
-          try {
-            await api("/documents", {
-              method: "POST",
-              body: JSON.stringify({
-                title: title,
-                description: description,
-                categoryId: categoryId,
-                filename: selectedFile.name,
-                filetype: selectedFile.name.split(".").pop().toLowerCase(),
-                mimeType: getMimeType(selectedFile.name),
-                fileData: base64Data,
-              }),
-            });
-            showToast("上传成功！");
-            setTimeout(function() { location.href = "/admin.html"; }, 1000);
-          } catch(err) {
-            showToast(err.message, "error");
-            document.getElementById("uploadBtn").disabled = false;
-            document.getElementById("progressArea").style.display = "none";
-          }
-        };
-        reader.onerror = function() {
-          showToast("文件读取失败", "error");
-          document.getElementById("uploadBtn").disabled = false;
-          document.getElementById("progressArea").style.display = "none";
-        };
-        reader.readAsDataURL(selectedFile);
-      } catch(e) {
-        showToast(e.message, "error");
+        // 读取文件为 ArrayBuffer
+        const arrayBuffer = await selectedFile.arrayBuffer();
+        setProgress(30);
+        document.getElementById("progressText").textContent = "正在转换为 base64...";
+
+        const base64Data = arrayBufferToBase64(arrayBuffer);
+        setProgress(50);
+        document.getElementById("progressText").textContent = "正在上传到服务器...";
+
+        // 调用后端 API（base64 通过 JSON POST）
+        await api("/documents", {
+          method: "POST",
+          body: JSON.stringify({
+            title: title,
+            description: description,
+            categoryId: categoryId,
+            filename: selectedFile.name,
+            filetype: selectedFile.name.split(".").pop().toLowerCase(),
+            mimeType: getMimeType(selectedFile.name),
+            fileData: base64Data,
+          }),
+        });
+
+        setProgress(100);
+        document.getElementById("progressText").textContent = "上传成功！";
+        showToast("上传成功！");
+        setTimeout(function() { location.href = "/admin.html"; }, 1000);
+      } catch(err) {
+        showToast(err.message, "error");
         document.getElementById("uploadBtn").disabled = false;
         document.getElementById("progressArea").style.display = "none";
       }
+    }
+
+    function setProgress(p) {
+      document.getElementById("progressBarFill").style.width = p + "%";
     }
 
     loadCategories();

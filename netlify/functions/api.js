@@ -1,14 +1,16 @@
 const crypto = require("crypto");
 
 // ========== GitHub API 持久化存储 ==========
-// 数据持久化到 GitHub 仓库的 JSON 文件，通过 GitHub REST API 读写
-// 零成本、无需额外服务、数据永久保存
+// 元数据存 data/store.json（通过 GitHub Contents API）
+// 文件二进制存 data/files/{docId}-{filename}（也通过 GitHub Contents API）
+// 优点：突破 6MB 请求体限制，单文件最大 100MB
 
 const GH_TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
 const GH_OWNER = process.env.GITHUB_OWNER || "dyxasx";
 const GH_REPO = process.env.GITHUB_REPO || "doc-query-system";
 const GH_BRANCH = process.env.GITHUB_BRANCH || "main";
 const DATA_FILE = "data/store.json";
+const FILES_DIR = "data/files";
 
 // 内存缓存（减少 API 调用）
 let _cache = null;
@@ -53,7 +55,6 @@ async function githubAPI(path, method = "GET", body = null) {
 }
 
 async function githubRaw(path) {
-  // 获取文件原始内容
   const url = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${path}`;
   const headers = GH_TOKEN ? { "Authorization": `Bearer ${GH_TOKEN}` } : {};
   const res = await fetch(url, { headers });
@@ -95,7 +96,6 @@ async function saveData(data) {
   }
 
   try {
-    // 先获取文件 sha（更新文件需要 sha）
     let sha = null;
     const getRes = await githubAPI(DATA_FILE);
     if (getRes.status === 200) {
@@ -120,6 +120,67 @@ async function saveData(data) {
     }
   } catch (e) {
     console.log("[store] saveData error:", e.message);
+  }
+}
+
+// 上传文件二进制到 GitHub（单独路径）
+async function uploadFileToGitHub(filePath, base64Content) {
+  if (!GH_TOKEN) {
+    throw new Error("GITHUB_TOKEN not set");
+  }
+
+  // 检查文件是否已存在
+  let sha = null;
+  const getRes = await githubAPI(filePath);
+  if (getRes.status === 200) {
+    const fileData = await getRes.json();
+    sha = fileData.sha;
+  }
+
+  const body = {
+    message: `upload file ${filePath}`,
+    content: base64Content,
+    branch: GH_BRANCH,
+  };
+  if (sha) body.sha = sha;
+
+  const putRes = await githubAPI(filePath, "PUT", body);
+  if (putRes.status !== 200 && putRes.status !== 201) {
+    const errText = await putRes.text();
+    throw new Error(`GitHub upload failed: ${putRes.status} ${errText}`);
+  }
+}
+
+// 删除文件
+async function deleteFileFromGitHub(filePath) {
+  if (!GH_TOKEN) return;
+
+  try {
+    const getRes = await githubAPI(filePath);
+    if (getRes.status === 200) {
+      const fileData = await getRes.json();
+      const delRes = await fetch(
+        `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${filePath}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Authorization": `Bearer ${GH_TOKEN}`,
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+          body: JSON.stringify({
+            message: `delete file ${filePath}`,
+            sha: fileData.sha,
+            branch: GH_BRANCH,
+          }),
+        }
+      );
+      if (delRes.status !== 200 && delRes.status !== 204) {
+        console.log("[store] delete file failed:", delRes.status);
+      }
+    }
+  } catch (e) {
+    console.log("[store] deleteFile error:", e.message);
   }
 }
 
@@ -188,15 +249,18 @@ function formatSize(bytes) {
   return (bytes / 1048576).toFixed(1) + " MB";
 }
 
+function safeFilename(filename) {
+  // 防止路径穿越和特殊字符
+  return filename.replace(/[^a-zA-Z0-9._\u4e00-\u9fa5\-]/g, "_").slice(-100);
+}
+
 // ========== 主处理函数 ==========
 
 exports.handler = async (event) => {
-  // CORS 预检
   if (event.httpMethod === "OPTIONS") {
     return { statusCode: 200, headers: CORS_HEADERS, body: "" };
   }
 
-  // 路径解析
   let rawPath = event.path || "";
   rawPath = rawPath.split("?")[0];
   let apiPart = rawPath;
@@ -207,7 +271,6 @@ exports.handler = async (event) => {
   const segments = apiPart.split("/").filter(Boolean);
   const method = event.httpMethod;
 
-  // 解析 body
   let body = {};
   if (event.body) {
     try {
@@ -220,8 +283,6 @@ exports.handler = async (event) => {
   const authPayload = verifyToken(event.headers.authorization || event.headers.Authorization);
 
   try {
-    // ========== 路由匹配 ==========
-
     // GET /api/documents - 查询文档列表
     if (method === "GET" && (segments[0] === "documents" || segments.length === 0)) {
       return await handleListDocuments(event);
@@ -237,53 +298,53 @@ exports.handler = async (event) => {
       return await handleDownloadFile(segments[1]);
     }
 
-    // POST /api/documents - 上传文档（需登录）
+    // POST /api/documents - 上传文档
     if (method === "POST" && segments[0] === "documents") {
       if (!authPayload) return json({ error: "未登录" }, 401);
       return await handleUploadDocument(event);
     }
 
-    // DELETE /api/documents/:id - 删除文档（需登录）
+    // DELETE /api/documents/:id - 删除文档
     if (method === "DELETE" && segments[0] === "documents" && segments[1]) {
       if (!authPayload) return json({ error: "未登录" }, 401);
       return await handleDeleteDocument(segments[1]);
     }
 
-    // GET /api/categories - 获取分类列表
+    // GET /api/categories
     if (method === "GET" && segments[0] === "categories") {
       return await handleListCategories();
     }
 
-    // POST /api/categories - 添加分类（需登录）
+    // POST /api/categories
     if (method === "POST" && segments[0] === "categories") {
       if (!authPayload) return json({ error: "未登录" }, 401);
       return await handleAddCategory(body);
     }
 
-    // DELETE /api/categories/:id - 删除分类（需登录）
+    // DELETE /api/categories/:id
     if (method === "DELETE" && segments[0] === "categories" && segments[1]) {
       if (!authPayload) return json({ error: "未登录" }, 401);
       return await handleDeleteCategory(segments[1]);
     }
 
-    // POST /api/login - 登录
+    // POST /api/login
     if (method === "POST" && segments[0] === "login") {
       return await handleLogin(body);
     }
 
-    // POST /api/password - 修改密码（需登录）
+    // POST /api/password
     if (method === "POST" && segments[0] === "password") {
       if (!authPayload) return json({ error: "未登录" }, 401);
       return await handleChangePassword(body);
     }
 
-    // GET /api/stats - 统计数据（需登录）
+    // GET /api/stats
     if (method === "GET" && segments[0] === "stats") {
       if (!authPayload) return json({ error: "未登录" }, 401);
       return await handleStats();
     }
 
-    // GET /api/health - 健康检查
+    // GET /api/health
     if (method === "GET" && segments[0] === "health") {
       return json({
         ok: true,
@@ -342,7 +403,6 @@ async function handleListDocuments(event) {
   const data = await loadData();
   let documents = data.documents || [];
 
-  // 过滤
   if (keyword) {
     documents = documents.filter(d =>
       (d.title || "").toLowerCase().includes(keyword) ||
@@ -353,33 +413,37 @@ async function handleListDocuments(event) {
     documents = documents.filter(d => d.categoryId === categoryId);
   }
 
-  // 排序（按上传时间倒序）
   documents.sort((a, b) => (b.uploadTime || 0) - (a.uploadTime || 0));
 
-  // 分页
   const total = documents.length;
   const totalPages = Math.max(1, Math.ceil(total / perPage));
   const start = (page - 1) * perPage;
   const paged = documents.slice(start, start + perPage);
 
-  // 获取分类信息
   const catMap = {};
   for (const cat of (data.categories || [])) {
     catMap[cat.id] = cat;
   }
 
-  // 附加分类信息和格式化（不返回 fileData，减少传输量）
-  const result = paged.map(d => {
-    const { fileData, ...rest } = d;
-    return {
-      ...rest,
-      category: catMap[d.categoryId] || null,
-      fileSizeFormatted: formatSize(d.fileSize || 0),
-      fileIcon: getFileIcon(d.filetype),
-      isPreviewable: isPreviewable(d.filetype),
-      uploadTimeFormatted: new Date(d.uploadTime).toLocaleString("zh-CN"),
-    };
-  });
+  // 列表里只返回元数据，filePath 用于下载
+  const result = paged.map(d => ({
+    id: d.id,
+    title: d.title,
+    description: d.description,
+    categoryId: d.categoryId,
+    filename: d.filename,
+    filetype: d.filetype,
+    mimeType: d.mimeType,
+    fileSize: d.fileSize,
+    downloadCount: d.downloadCount,
+    uploadTime: d.uploadTime,
+    hasFile: !!d.filePath,
+    category: catMap[d.categoryId] || null,
+    fileSizeFormatted: formatSize(d.fileSize || 0),
+    fileIcon: getFileIcon(d.filetype),
+    isPreviewable: isPreviewable(d.filetype),
+    uploadTimeFormatted: new Date(d.uploadTime).toLocaleString("zh-CN"),
+  }));
 
   return json({ documents: result, total, page, totalPages, perPage });
 }
@@ -390,17 +454,23 @@ async function handleGetDocument(id) {
 
   if (!doc) return json({ error: "文档不存在" }, 404);
 
-  // 增加下载次数
   doc.downloadCount = (doc.downloadCount || 0) + 1;
   await saveData(data);
 
-  // 获取分类
   const cat = doc.categoryId ? (data.categories || []).find(c => c.id === doc.categoryId) : null;
 
-  // 不返回 fileData
-  const { fileData, ...docInfo } = doc;
   return json({
-    ...docInfo,
+    id: doc.id,
+    title: doc.title,
+    description: doc.description,
+    categoryId: doc.categoryId,
+    filename: doc.filename,
+    filetype: doc.filetype,
+    mimeType: doc.mimeType,
+    fileSize: doc.fileSize,
+    downloadCount: doc.downloadCount,
+    uploadTime: doc.uploadTime,
+    hasFile: !!doc.filePath,
     category: cat,
     fileSizeFormatted: formatSize(doc.fileSize || 0),
     fileIcon: getFileIcon(doc.filetype),
@@ -415,20 +485,31 @@ async function handleDownloadFile(id) {
   const doc = (data.documents || []).find(d => d.id === id);
 
   if (!doc) return json({ error: "文档不存在" }, 404);
-  if (!doc.fileData) return json({ error: "文件数据不存在" }, 404);
+  if (!doc.filePath) return json({ error: "文件数据不存在" }, 404);
 
-  const buffer = Buffer.from(doc.fileData, "base64");
+  // 从 GitHub Raw 获取文件
+  try {
+    const res = await githubRaw(doc.filePath);
+    if (res.status !== 200) {
+      return json({ error: "文件下载失败: " + res.status }, 500);
+    }
 
-  return {
-    statusCode: 200,
-    headers: {
-      "Content-Type": doc.mimeType || "application/octet-stream",
-      "Content-Disposition": `inline; filename="${encodeURIComponent(doc.filename)}"`,
-      ...CORS_HEADERS,
-    },
-    body: buffer.toString("base64"),
-    isBase64Encoded: true,
-  };
+    const buffer = Buffer.from(await res.arrayBuffer());
+
+    return {
+      statusCode: 200,
+      headers: {
+        "Content-Type": doc.mimeType || "application/octet-stream",
+        "Content-Disposition": `inline; filename="${encodeURIComponent(doc.filename)}"`,
+        "Content-Length": String(buffer.length),
+        ...CORS_HEADERS,
+      },
+      body: buffer.toString("base64"),
+      isBase64Encoded: true,
+    };
+  } catch (e) {
+    return json({ error: "文件下载失败: " + e.message }, 500);
+  }
 }
 
 async function handleUploadDocument(event) {
@@ -442,13 +523,19 @@ async function handleUploadDocument(event) {
   const buffer = Buffer.from(fileData, "base64");
   const fileSize = buffer.length;
 
-  // 限制 5MB（GitHub API + Netlify 函数限制）
-  if (fileSize > 5 * 1024 * 1024) {
-    return json({ error: "文件太大，最大支持5MB" }, 400);
+  // 单文件最大 4MB（base64 后约5.3MB，受 Netlify Functions 6MB 请求体限制）
+  if (fileSize > 4 * 1024 * 1024) {
+    return json({ error: "文件太大，最大支持4MB（base64编码后约5.3MB，受Netlify函数限制）。请先用PDF/Word压缩工具压缩后再上传" }, 400);
   }
 
   const docId = "doc-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+  const safeName = safeFilename(filename);
+  const filePath = `${FILES_DIR}/${docId}-${safeName}`;
 
+  // 1. 先上传文件二进制到 GitHub
+  await uploadFileToGitHub(filePath, fileData);
+
+  // 2. 再保存元数据
   const doc = {
     id: docId,
     title: title || filename.replace(/\.[^.]+$/, ""),
@@ -458,7 +545,7 @@ async function handleUploadDocument(event) {
     filetype: filetype || filename.split(".").pop().toLowerCase(),
     mimeType: mimeType || "application/octet-stream",
     fileSize,
-    fileData,
+    filePath, // 文件在仓库中的路径
     downloadCount: 0,
     uploadTime: Date.now(),
   };
@@ -468,8 +555,6 @@ async function handleUploadDocument(event) {
   data.documents.push(doc);
   await saveData(data);
 
-  // 返回时去掉 fileData
-  const { fileData: _, ...result } = doc;
   return json({
     success: true,
     message: "上传成功",
@@ -485,6 +570,12 @@ async function handleDeleteDocument(id) {
   if (idx === -1) return json({ error: "文档不存在" }, 404);
 
   const doc = data.documents[idx];
+
+  // 删除文件
+  if (doc.filePath) {
+    await deleteFileFromGitHub(doc.filePath);
+  }
+
   data.documents.splice(idx, 1);
   await saveData(data);
 
@@ -495,7 +586,6 @@ async function handleListCategories() {
   const data = await loadData();
   const categories = data.categories || [];
 
-  // 统计各分类文档数
   const docCountMap = {};
   for (const doc of (data.documents || [])) {
     if (doc.categoryId) {
@@ -519,7 +609,6 @@ async function handleAddCategory(body) {
   const data = await loadData();
   const categories = data.categories || [];
 
-  // 检查重名
   if (categories.some(c => c.name === name)) {
     return json({ error: "分类已存在" }, 400);
   }
