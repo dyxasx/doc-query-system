@@ -15,11 +15,6 @@
       "icon": "fa-code"
     },
     {
-      "id": "cat-3",
-      "name": "通知公告",
-      "icon": "fa-bullhorn"
-    },
-    {
       "id": "cat-5",
       "name": "其他",
       "icon": "fa-folder"
