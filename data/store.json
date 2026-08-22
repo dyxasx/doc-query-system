@@ -4,6 +4,20 @@
     "password": "1894539823d72bf5a53c7ee24bffe91027be755fd094e974e808664e8b21f77a"
   },
   "categories": [],
-  "documents": [],
+  "documents": [
+    {
+      "id": "doc-1787381747025-ominkc",
+      "title": "60KW一体式直流充电桩（单枪）-用户手册V1.0",
+      "description": "",
+      "categoryId": null,
+      "filename": "60KW一体式直流充电桩（单枪）-用户手册V1.0.pdf",
+      "filetype": "pdf",
+      "mimeType": "application/pdf",
+      "fileSize": 1489774,
+      "filePath": "data/files/doc-1787381747025-ominkc-60KW一体式直流充电桩_单枪_-用户手册V1.0.pdf",
+      "downloadCount": 0,
+      "uploadTime": 1787381749709
+    }
+  ],
   "initialized": true
 }
