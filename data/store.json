@@ -3,7 +3,13 @@
     "username": "admin",
     "password": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
   },
-  "categories": [],
+  "categories": [
+    {
+      "id": "cat-1787376623099",
+      "name": "说明书",
+      "icon": "fa-folder"
+    }
+  ],
   "documents": [
     {
       "id": "doc-1787298709221-hvh1kq",
