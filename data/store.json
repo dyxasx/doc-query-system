@@ -5,11 +5,6 @@
   },
   "categories": [
     {
-      "id": "cat-1787377116000",
-      "name": "11",
-      "icon": "fa-folder"
-    },
-    {
       "id": "cat-1787378031976",
       "name": "分类测试",
       "icon": "fa-folder"
