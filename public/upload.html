@@ -16,7 +16,7 @@
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
         <i class="fa-solid fa-cloud-arrow-up"></i>
         <div style="font-size:18px;margin-bottom:4px;" id="uploadZoneText">点击选择文件 或拖拽到此处</div>
-        <div style="font-size:13px;color:var(--text-light);">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 100MB，大文件直传 GitHub）</div>
+        <div style="font-size:13px;color:var(--text-light);">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 4MB，大图片自动压缩）</div>
         <input type="file" id="fileInput" style="display:none;" onchange="onFileSelected(this)">
       </div>
 
@@ -112,9 +112,26 @@
       const file = input.files && input.files[0];
       if (!file) return;
 
-      if (file.size > 100 * 1024 * 1024) {
-        showToast("文件太大，最大支持100MB", "error");
-        return;
+      const isImage = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+
+      if (file.size > 4 * 1024 * 1024) {
+        if (isImage) {
+          showToast("图片超过4MB，上传时会自动压缩", "success");
+        } else {
+          var ext = file.name.split(".").pop().toLowerCase();
+          var tips = "文件太大（" + formatSize(file.size) + "），最大支持4MB。";
+          if (ext === "pdf") {
+            tips += "推荐用 iLovePDF（ilovepdf.com/zh-cn/compress_pdf）在线免费压缩后重试";
+          } else if (["doc", "docx", "ppt", "pptx"].includes(ext)) {
+            tips += "建议删除文档中的大图片/视频，或另存为压缩版";
+          } else if (["zip", "rar", "7z"].includes(ext)) {
+            tips += "建议分卷压缩或拆分文件";
+          } else {
+            tips += "请压缩后重试";
+          }
+          showToast(tips, "error");
+          return;
+        }
       }
 
       selectedFile = file;
@@ -146,34 +163,6 @@
       document.getElementById("progressBarFill").style.width = p + "%";
     }
 
-    function xhrUpload(url, file, contentType, onProgress) {
-      return new Promise(function(resolve, reject) {
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", url);
-        xhr.setRequestHeader("Content-Type", contentType);
-        xhr.upload.onprogress = function(e) {
-          if (e.lengthComputable && onProgress) {
-            onProgress(e.loaded / e.total);
-          }
-        };
-        xhr.onload = function() {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try { resolve(JSON.parse(xhr.responseText)); }
-            catch { resolve(xhr.responseText); }
-          } else {
-            try {
-              const err = JSON.parse(xhr.responseText);
-              reject(new Error(err.error || ("HTTP " + xhr.status)));
-            } catch {
-              reject(new Error("HTTP " + xhr.status));
-            }
-          }
-        };
-        xhr.onerror = function() { reject(new Error("网络错误")); };
-        xhr.send(file);
-      });
-    }
-
     function arrayBufferToBase64(buffer) {
       let binary = '';
       const bytes = new Uint8Array(buffer);
@@ -182,6 +171,53 @@
         binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
       }
       return btoa(binary);
+    }
+
+    // ========== 图片自动压缩 ==========
+    // 超过 1MB 的图片自动用 canvas 压缩（JPG/PNG/WebP）
+    async function compressImage(file) {
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return file;
+      if (file.size <= 1024 * 1024) return file; // 1MB 内不压
+
+      return new Promise(function(resolve) {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = function() {
+          URL.revokeObjectURL(url);
+          let quality = 0.8;
+          let w = img.width, h = img.height;
+
+          // 长边超 3000px 则缩小
+          const maxSide = 3000;
+          if (w > maxSide || h > maxSide) {
+            const scale = maxSide / Math.max(w, h);
+            w = Math.round(w * scale);
+            h = Math.round(h * scale);
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, w, h);
+
+          const tryCompress = function(q) {
+            canvas.toBlob(function(blob) {
+              if (blob && blob.size < file.size) {
+                // 压缩有效，返回新 File
+                const newFile = new File([blob], file.name.replace(/\.(png|webp)$/i, ".jpg"), { type: "image/jpeg" });
+                resolve(newFile);
+              } else if (q > 0.3) {
+                tryCompress(q - 0.2);
+              } else {
+                resolve(file); // 压不动了，用原文件
+              }
+            }, "image/jpeg", q);
+          };
+          tryCompress(quality);
+        };
+        img.onerror = function() { resolve(file); };
+        img.src = url;
+      });
     }
 
     async function uploadFile() {
@@ -197,66 +233,46 @@
       setProgress(5);
 
       try {
-        if (selectedFile.size <= 4 * 1024 * 1024) {
-          document.getElementById("progressText").textContent = "读取文件...";
-          setProgress(15);
+        let fileToUpload = selectedFile;
 
-          const arrayBuffer = await selectedFile.arrayBuffer();
-          const base64Data = arrayBufferToBase64(arrayBuffer);
-
-          document.getElementById("progressText").textContent = "上传中...";
-          setProgress(40);
-
-          await api("/documents", {
-            method: "POST",
-            body: JSON.stringify({
-              title: title,
-              description: description,
-              categoryId: categoryId,
-              filename: selectedFile.name,
-              filetype: selectedFile.name.split(".").pop().toLowerCase(),
-              mimeType: getMimeType(selectedFile.name),
-              fileData: base64Data,
-            }),
-          });
-        } else {
-          document.getElementById("progressText").textContent = "获取上传 URL...";
-          setProgress(10);
-
-          const urlRes = await api("/upload", {
-            method: "POST",
-            body: JSON.stringify({
-              filename: selectedFile.name,
-              fileSize: selectedFile.size,
-            }),
-          });
-
-          document.getElementById("progressText").textContent = "直传到 GitHub...";
-
-          await xhrUpload(
-            urlRes.uploadUrl,
-            selectedFile,
-            selectedFile.type || "application/octet-stream",
-            function(ratio) { setProgress(10 + ratio * 70); }
-          );
-
-          document.getElementById("progressText").textContent = "保存元数据...";
-          setProgress(85);
-
-          await api("/register", {
-            method: "POST",
-            body: JSON.stringify({
-              tagName: urlRes.tagName,
-              title: title,
-              description: description,
-              categoryId: categoryId,
-              filename: selectedFile.name,
-              filetype: selectedFile.name.split(".").pop().toLowerCase(),
-              mimeType: getMimeType(selectedFile.name),
-              fileSize: selectedFile.size,
-            }),
-          });
+        // 大图片先自动压缩
+        if (selectedFile.size > 4 * 1024 * 1024) {
+          const isImage = ["image/jpeg", "image/png", "image/webp"].includes(selectedFile.type);
+          if (isImage) {
+            document.getElementById("progressText").textContent = "正在压缩图片...";
+            setProgress(10);
+            fileToUpload = await compressImage(selectedFile);
+            if (fileToUpload.size > 4 * 1024 * 1024) {
+              showToast("图片压缩后仍超过4MB，请换更小的图片", "error");
+              document.getElementById("uploadBtn").disabled = false;
+              document.getElementById("progressArea").style.display = "none";
+              return;
+            }
+            showToast("图片已自动压缩: " + formatSize(selectedFile.size) + " → " + formatSize(fileToUpload.size));
+          }
         }
+
+        document.getElementById("progressText").textContent = "读取文件...";
+        setProgress(20);
+
+        const arrayBuffer = await fileToUpload.arrayBuffer();
+        const base64Data = arrayBufferToBase64(arrayBuffer);
+
+        document.getElementById("progressText").textContent = "上传中...";
+        setProgress(50);
+
+        await api("/documents", {
+          method: "POST",
+          body: JSON.stringify({
+            title: title,
+            description: description,
+            categoryId: categoryId,
+            filename: fileToUpload.name,
+            filetype: fileToUpload.name.split(".").pop().toLowerCase(),
+            mimeType: getMimeType(fileToUpload.name),
+            fileData: base64Data,
+          }),
+        });
 
         setProgress(100);
         document.getElementById("progressText").textContent = "上传成功！";
