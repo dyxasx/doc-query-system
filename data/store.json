@@ -13,6 +13,11 @@
       "id": "cat-1787378031976",
       "name": "分类测试",
       "icon": "fa-folder"
+    },
+    {
+      "id": "cat-1787379653066",
+      "name": "__实时测试__",
+      "icon": "fa-folder"
     }
   ],
   "documents": [
@@ -41,6 +46,19 @@
       "downloadCount": 0,
       "uploadTime": 1787298709251,
       "filePath": "data/files/doc-1787298709221-hvh1kq-HCD英文版操作维修说明书说明书20260526_HCD96200-405046-000_.pdf"
+    },
+    {
+      "id": "doc-1787379677635-8pp26g",
+      "title": "__测试文档__",
+      "description": "",
+      "categoryId": null,
+      "filename": "test.txt",
+      "filetype": "txt",
+      "mimeType": "text/plain",
+      "fileSize": 29,
+      "filePath": "data/files/doc-1787379677635-8pp26g-test.txt",
+      "downloadCount": 0,
+      "uploadTime": 1787379679736
     }
   ],
   "initialized": true
