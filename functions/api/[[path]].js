@@ -97,29 +97,38 @@ function ghHeaders(cfg) {
 }
 
 async function githubRaw(cfg, path) {
-  const url = `https://raw.githubusercontent.com/${cfg.GH_OWNER}/${cfg.GH_REPO}/${cfg.GH_BRANCH}/${path}`;
+  // 加时间戳参数绕过 CDN 缓存（raw.githubusercontent.com 有约5分钟缓存，
+  // 会导致：删除的文档"复活"、新上传的文档最长5分钟不可见、并发写入时旧数据覆盖新数据）
+  const url = `https://raw.githubusercontent.com/${cfg.GH_OWNER}/${cfg.GH_REPO}/${cfg.GH_BRANCH}/${path}?_=${Date.now()}`;
   const headers = cfg.GH_TOKEN ? { "Authorization": `Bearer ${cfg.GH_TOKEN}` } : {};
-  return fetch(url, { headers });
+  return fetch(url, { headers, cf: { cacheTtl: 0, cacheEverything: false } });
 }
 
 async function loadData(cfg) {
   if (_cache && Date.now() - _cacheTime < CACHE_TTL) return _cache;
+  let status = 0;
   try {
     const res = await githubRaw(cfg, DATA_FILE);
+    status = res.status;
     if (res.status === 200) {
       _cache = JSON.parse(await res.text());
       _cacheTime = Date.now();
       return _cache;
     }
+    if (res.status === 404) {
+      // 首次使用：store.json 不存在，初始化默认数据
+      const adminHash = await hashPassword("admin123");
+      _cache = getDefaultData(adminHash);
+      _cacheTime = Date.now();
+      await saveData(cfg, _cache);
+      return _cache;
+    }
   } catch (e) {
     console.log("[store] loadData error:", e.message);
   }
-  // 初始化
-  const adminHash = await hashPassword("admin123");
-  _cache = getDefaultData(adminHash);
-  _cacheTime = Date.now();
-  await saveData(cfg, _cache);
-  return _cache;
+  // GitHub 暂时不可达或返回异常：优先使用旧缓存兜底，避免误初始化清空全部文档
+  if (_cache) return _cache;
+  throw new Error(`存储读取失败（HTTP ${status}），请稍后重试`);
 }
 
 async function saveData(cfg, data) {
