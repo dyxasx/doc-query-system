@@ -3,13 +3,7 @@
     "username": "admin",
     "password": "1894539823d72bf5a53c7ee24bffe91027be755fd094e974e808664e8b21f77a"
   },
-  "categories": [
-    {
-      "id": "cat-1787379847906",
-      "name": "35",
-      "icon": "fa-folder"
-    }
-  ],
+  "categories": [],
   "documents": [],
   "initialized": true
 }
