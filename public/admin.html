@@ -15,16 +15,16 @@
 
     <!-- 操作按钮 -->
     <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap;">
-      <a href="/upload.html" class="btn btn-primary"><i class="fa-solid fa-upload"></i> 上传文档</a>
-      <button class="btn btn-outline" onclick="showCategoryModal()"><i class="fa-solid fa-folder-plus"></i> 添加分类</button>
-      <button class="btn btn-outline" onclick="showPasswordModal()"><i class="fa-solid fa-key"></i> 修改密码</button>
+      <a href="/upload.html" class="btn btn-primary"><i class="fa-solid fa-upload"></i> <span data-i18n="upload_doc">上传文档</span></a>
+      <button class="btn btn-outline" onclick="showCategoryModal()"><i class="fa-solid fa-folder-plus"></i> <span data-i18n="add_cat">添加分类</span></button>
+      <button class="btn btn-outline" onclick="showPasswordModal()"><i class="fa-solid fa-key"></i> <span data-i18n="change_pw">修改密码</span></button>
     </div>
 
     <!-- 搜索 -->
     <div class="search-section">
       <div class="search-bar">
-        <input type="text" id="searchInput" placeholder="搜索文档...">
-        <button class="btn btn-primary" onclick="doSearch()"><i class="fa-solid fa-search"></i> 搜索</button>
+        <input type="text" id="searchInput" data-i18n-ph="search_doc_ph" placeholder="搜索文档...">
+        <button class="btn btn-primary" onclick="doSearch()"><i class="fa-solid fa-search"></i> <span data-i18n="search_btn">搜索</span></button>
       </div>
     </div>
 
@@ -33,12 +33,12 @@
       <table>
         <thead>
           <tr>
-            <th>文档名称</th>
-            <th>分类</th>
-            <th>大小</th>
-            <th>下载次数</th>
-            <th>上传时间</th>
-            <th>操作</th>
+            <th data-i18n="th_doc_name">文档名称</th>
+            <th data-i18n="th_category">分类</th>
+            <th data-i18n="th_size">大小</th>
+            <th data-i18n="th_downloads">下载次数</th>
+            <th data-i18n="th_upload_time">上传时间</th>
+            <th data-i18n="th_actions">操作</th>
           </tr>
         </thead>
         <tbody id="docTableBody"></tbody>
@@ -48,11 +48,11 @@
 
     <!-- 分类管理 -->
     <div style="margin-top:32px;">
-      <h3 style="margin-bottom:16px;"><i class="fa-solid fa-folder-tree"></i> 分类管理</h3>
+      <h3 style="margin-bottom:16px;"><i class="fa-solid fa-folder-tree"></i> <span data-i18n="cat_manage">分类管理</span></h3>
       <div class="table-container">
         <table>
           <thead>
-            <tr><th>分类名称</th><th>文档数</th><th>操作</th></tr>
+            <tr><th data-i18n="th_cat_name">分类名称</th><th data-i18n="th_doc_count">文档数</th><th data-i18n="th_actions">操作</th></tr>
           </thead>
           <tbody id="catTableBody"></tbody>
         </table>
@@ -63,18 +63,18 @@
   <!-- 添加分类弹窗 -->
   <div id="catModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
     <div class="login-card" style="width:400px;max-width:90vw;">
-      <div class="login-title" style="margin-bottom:20px;">添加分类</div>
+      <div class="login-title" style="margin-bottom:20px;" data-i18n="cat_modal">添加分类</div>
       <div class="form-group">
-        <label class="form-label">分类名称</label>
-        <input type="text" class="form-control" id="catName" placeholder="输入分类名称">
+        <label class="form-label" data-i18n="th_cat_name">分类名称</label>
+        <input type="text" class="form-control" id="catName" data-i18n-ph="cat_name_ph" placeholder="输入分类名称">
       </div>
       <div class="form-group">
-        <label class="form-label">图标（Font Awesome 类名）</label>
-        <input type="text" class="form-control" id="catIcon" placeholder="如 fa-folder" value="fa-folder">
+        <label class="form-label" data-i18n="icon_label">图标（Font Awesome 类名）</label>
+        <input type="text" class="form-control" id="catIcon" data-i18n-ph="icon_ph" placeholder="如 fa-folder" value="fa-folder">
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" style="flex:1;" onclick="addCategory()">添加</button>
-        <button class="btn btn-outline" onclick="hideCategoryModal()">取消</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="addCategory()" data-i18n="btn_add">添加</button>
+        <button class="btn btn-outline" onclick="hideCategoryModal()" data-i18n="btn_cancel">取消</button>
       </div>
     </div>
   </div>
@@ -82,22 +82,22 @@
   <!-- 修改密码弹窗 -->
   <div id="pwModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
     <div class="login-card" style="width:400px;max-width:90vw;">
-      <div class="login-title" style="margin-bottom:20px;">修改密码</div>
+      <div class="login-title" style="margin-bottom:20px;" data-i18n="pw_modal">修改密码</div>
       <div class="form-group">
-        <label class="form-label">原密码</label>
-        <input type="password" class="form-control" id="oldPassword" placeholder="输入原密码">
+        <label class="form-label" data-i18n="old_pw">原密码</label>
+        <input type="password" class="form-control" id="oldPassword" data-i18n-ph="old_pw_ph" placeholder="输入原密码">
       </div>
       <div class="form-group">
-        <label class="form-label">新密码（至少6位）</label>
-        <input type="password" class="form-control" id="newPassword" placeholder="输入新密码">
+        <label class="form-label" data-i18n="new_pw">新密码（至少6位）</label>
+        <input type="password" class="form-control" id="newPassword" data-i18n-ph="new_pw_ph" placeholder="输入新密码">
       </div>
       <div class="form-group">
-        <label class="form-label">确认新密码</label>
-        <input type="password" class="form-control" id="confirmPassword" placeholder="再次输入新密码">
+        <label class="form-label" data-i18n="confirm_pw">确认新密码</label>
+        <input type="password" class="form-control" id="confirmPassword" data-i18n-ph="confirm_pw_ph" placeholder="再次输入新密码">
       </div>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-primary" style="flex:1;" onclick="changePassword()">确认修改</button>
-        <button class="btn btn-outline" onclick="hidePasswordModal()">取消</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="changePassword()" data-i18n="btn_confirm">确认修改</button>
+        <button class="btn btn-outline" onclick="hidePasswordModal()" data-i18n="btn_cancel">取消</button>
       </div>
     </div>
   </div>
@@ -106,6 +106,8 @@
   <script>
     if (!Auth.isLoggedIn()) { location.href = "/login.html"; }
     document.getElementById("navbar").innerHTML = renderNavbar("admin");
+    applyI18n();
+    document.title = t("page_title_admin");
 
     let currentPage = 1;
     let currentKeyword = "";
@@ -114,13 +116,11 @@
     async function loadStats() {
       try {
         const data = await api("/stats");
-        const colors = ["#4f46e5","#10b981","#f59e0b","#3b82f6"];
-        const icons = ["fa-file","#fa-download","#fa-folder","#fa-database"];
         const items = [
-          { label: "文档总数", value: data.totalDocs, icon: "fa-file", color: "#4f46e5" },
-          { label: "分类数量", value: data.totalCategories, icon: "fa-folder", color: "#10b981" },
-          { label: "下载次数", value: data.totalDownloads, icon: "fa-download", color: "#f59e0b" },
-          { label: "存储空间", value: data.totalSizeFormatted, icon: "fa-database", color: "#3b82f6" },
+          { label: t("stat_docs"), value: data.totalDocs, icon: "fa-file", color: "#4f46e5" },
+          { label: t("stat_cats"), value: data.totalCategories, icon: "fa-folder", color: "#10b981" },
+          { label: t("stat_downloads"), value: data.totalDownloads, icon: "fa-download", color: "#f59e0b" },
+          { label: t("stat_storage"), value: data.totalSizeFormatted, icon: "fa-database", color: "#3b82f6" },
         ];
         document.getElementById("statsGrid").innerHTML = items.map(function(item) {
           return '<div class="stat-card"><div class="stat-icon" style="background:' + item.color + ';">' +
@@ -144,19 +144,19 @@
             "<td>" + (doc.category ? '<i class="fa-solid ' + doc.category.icon + '"></i> ' + doc.category.name : "-") + "</td>" +
             "<td>" + doc.fileSizeFormatted + "</td>" +
             "<td>" + (doc.downloadCount || 0) + "</td>" +
-            "<td>" + doc.uploadTimeFormatted + "</td>" +
+            "<td>" + formatDate(doc.uploadTime) + "</td>" +
             '<td><button class="btn btn-danger btn-sm" onclick="deleteDoc(\'' + doc.id + '\',\'' + doc.title.replace(/'/g, "") + '\')"><i class="fa-solid fa-trash"></i></button></td>' +
           "</tr>";
         }).join("");
         renderPagination(data.page, data.totalPages, data.total);
-      } catch(e) { showToast("加载失败: " + e.message, "error"); }
+      } catch(e) { showToast(t("load_failed") + ": " + e.message, "error"); }
     }
 
     function renderPagination(page, totalPages, total) {
       const el = document.getElementById("adminPagination");
-      if (totalPages <= 1) { el.innerHTML = '<span class="page-info">共 ' + total + ' 篇</span>'; return; }
+      if (totalPages <= 1) { el.innerHTML = '<span class="page-info">' + t("total_short", { n: total }) + '</span>'; return; }
       let html = '<button onclick="goPage(' + (page - 1) + ')" ' + (page <= 1 ? "disabled" : "") + '><i class="fa-solid fa-chevron-left"></i></button>';
-      html += '<span class="page-info">第 ' + page + " / " + totalPages + " 页（共 " + total + " 篇）</span>";
+      html += '<span class="page-info">' + t("page_info", { p: page, t: totalPages, n: total }) + '</span>';
       html += '<button onclick="goPage(' + (page + 1) + ')" ' + (page >= totalPages ? "disabled" : "") + '><i class="fa-solid fa-chevron-right"></i></button>';
       el.innerHTML = html;
     }
@@ -167,10 +167,10 @@
 
     // 删除文档
     async function deleteDoc(id, title) {
-      if (!confirm("确定要删除文档「" + title + "」吗？")) return;
+      if (!confirm(t("confirm_del_doc", { t: title }))) return;
       try {
         await api("/documents/" + id, { method: "DELETE" });
-        showToast("删除成功");
+        showToast(t("delete_success"));
         loadDocuments();
         loadStats();
         loadCategories();
@@ -190,10 +190,10 @@
     }
 
     async function deleteCat(id, name) {
-      if (!confirm("确定删除分类「" + name + "」吗？该分类下的文档不会被删除。")) return;
+      if (!confirm(t("confirm_del_cat", { n: name }))) return;
       try {
         await api("/categories/" + id, { method: "DELETE" });
-        showToast("分类已删除");
+        showToast(t("cat_deleted"));
         loadCategories();
         loadStats();
       } catch(e) { showToast(e.message, "error"); }
@@ -206,10 +206,10 @@
     async function addCategory() {
       const name = document.getElementById("catName").value.trim();
       const icon = document.getElementById("catIcon").value.trim();
-      if (!name) { showToast("请输入分类名称", "error"); return; }
+      if (!name) { showToast(t("enter_cat_name"), "error"); return; }
       try {
         await api("/categories", { method: "POST", body: JSON.stringify({ name, icon }) });
-        showToast("分类添加成功");
+        showToast(t("cat_added"));
         document.getElementById("catName").value = "";
         document.getElementById("catIcon").value = "fa-folder";
         hideCategoryModal();
@@ -226,16 +226,24 @@
       const oldPassword = document.getElementById("oldPassword").value;
       const newPassword = document.getElementById("newPassword").value;
       const confirmPassword = document.getElementById("confirmPassword").value;
-      if (newPassword !== confirmPassword) { showToast("两次密码不一致", "error"); return; }
+      if (newPassword !== confirmPassword) { showToast(t("pw_mismatch"), "error"); return; }
       try {
         await api("/password", { method: "POST", body: JSON.stringify({ oldPassword, newPassword }) });
-        showToast("密码修改成功");
+        showToast(t("pw_changed"));
         document.getElementById("oldPassword").value = "";
         document.getElementById("newPassword").value = "";
         document.getElementById("confirmPassword").value = "";
         hidePasswordModal();
       } catch(e) { showToast(e.message, "error"); }
     }
+
+    // 语言切换时刷新动态内容
+    window.onLangChange = function() {
+      document.title = t("page_title_admin");
+      loadStats();
+      loadDocuments();
+      loadCategories();
+    };
 
     // 初始化
     loadStats();

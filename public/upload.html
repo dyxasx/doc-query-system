@@ -10,13 +10,13 @@
 <body>
   <div id="navbar"></div>
   <div class="container" style="max-width:700px;">
-    <h2 style="margin-bottom:24px;"><i class="fa-solid fa-upload"></i> 上传文档</h2>
+    <h2 style="margin-bottom:24px;"><i class="fa-solid fa-upload"></i> <span data-i18n="page_title_upload">上传文档</span></h2>
 
     <div class="search-section">
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
         <i class="fa-solid fa-cloud-arrow-up"></i>
-        <div style="font-size:18px;margin-bottom:4px;" id="uploadZoneText">点击选择文件 或拖拽到此处</div>
-        <div style="font-size:13px;color:var(--text-light);">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 25MB，超过自动压缩图片）</div>
+        <div style="font-size:18px;margin-bottom:4px;" id="uploadZoneText" data-i18n="drop_hint">点击选择文件 或拖拽到此处</div>
+        <div style="font-size:13px;color:var(--text-light);" data-i18n="file_type_hint">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 25MB，超过自动压缩图片）</div>
         <input type="file" id="fileInput" style="display:none;" onchange="onFileSelected(this)">
       </div>
 
@@ -27,26 +27,26 @@
             <div style="font-weight:500;" id="fileNameDisplay"></div>
             <div style="font-size:13px;color:var(--text-light);" id="fileSizeDisplay"></div>
           </div>
-          <button class="btn btn-outline btn-sm" onclick="resetFile()"><i class="fa-solid fa-xmark"></i> 移除</button>
+          <button class="btn btn-outline btn-sm" onclick="resetFile()"><i class="fa-solid fa-xmark"></i> <span data-i18n="btn_remove">移除</span></button>
         </div>
 
         <div class="form-group">
-          <label class="form-label">文档标题</label>
-          <input type="text" class="form-control" id="title" placeholder="留空则使用文件名">
+          <label class="form-label" data-i18n="doc_title_label">文档标题</label>
+          <input type="text" class="form-control" id="title" data-i18n-ph="title_ph" placeholder="留空则使用文件名">
         </div>
 
         <div class="form-group">
-          <label class="form-label">文档描述</label>
-          <textarea class="form-control" id="description" placeholder="简要描述文档内容（可选）"></textarea>
+          <label class="form-label" data-i18n="doc_desc_label">文档描述</label>
+          <textarea class="form-control" id="description" data-i18n-ph="desc_ph" placeholder="简要描述文档内容（可选）"></textarea>
         </div>
 
         <div class="form-group">
-          <label class="form-label">所属分类</label>
+          <label class="form-label" data-i18n="doc_cat_label">所属分类</label>
           <select class="form-control" id="categorySelect"></select>
         </div>
 
         <button class="btn btn-primary" style="width:100%;justify-content:center;" id="uploadBtn" onclick="uploadFile()">
-          <i class="fa-solid fa-upload"></i> 开始上传
+          <i class="fa-solid fa-upload"></i> <span data-i18n="btn_start_upload">开始上传</span>
         </button>
       </div>
 
@@ -66,6 +66,8 @@
   <script>
     if (!Auth.isLoggedIn()) { location.href = "/login.html"; }
     document.getElementById("navbar").innerHTML = renderNavbar("admin");
+    applyI18n();
+    document.title = t("page_title_upload");
 
     let selectedFile = null;
 
@@ -116,18 +118,18 @@
 
       if (file.size > 25 * 1024 * 1024) {
         if (isImage) {
-          showToast("图片超过25MB，上传时会自动压缩", "success");
+          showToast(t("img_over_25"), "success");
         } else {
           var ext = file.name.split(".").pop().toLowerCase();
-          var tips = "文件太大（" + formatSize(file.size) + "），最大支持25MB。";
+          var tips = t("file_too_large", { s: formatSize(file.size) });
           if (ext === "pdf") {
-            tips += "推荐用 iLovePDF（ilovepdf.com/zh-cn/compress_pdf）在线免费压缩后重试";
+            tips += " " + t("tip_pdf");
           } else if (["doc", "docx", "ppt", "pptx"].includes(ext)) {
-            tips += "建议删除文档中的大图片/视频，或另存为压缩版";
+            tips += " " + t("tip_doc");
           } else if (["zip", "rar", "7z"].includes(ext)) {
-            tips += "建议分卷压缩或拆分文件";
+            tips += " " + t("tip_zip");
           } else {
-            tips += "请压缩后重试";
+            tips += " " + t("tip_generic");
           }
           showToast(tips, "error");
           return;
@@ -135,6 +137,7 @@
       }
 
       selectedFile = file;
+      document.getElementById("uploadZoneText").removeAttribute("data-i18n");
       document.getElementById("uploadZoneText").textContent = file.name;
       document.getElementById("filePreviewIcon").className = "fa-solid " + getFileIcon(file.name);
       document.getElementById("fileNameDisplay").textContent = file.name;
@@ -146,7 +149,10 @@
     function resetFile() {
       selectedFile = null;
       document.getElementById("fileInput").value = "";
-      document.getElementById("uploadZoneText").textContent = "点击选择文件 或拖拽到此处";
+      // 恢复提示文案的翻译标记并应用当前语言
+      var zoneText = document.getElementById("uploadZoneText");
+      zoneText.setAttribute("data-i18n", "drop_hint");
+      zoneText.textContent = t("drop_hint");
       document.getElementById("fileForm").style.display = "none";
     }
 
@@ -154,7 +160,7 @@
       try {
         const data = await api("/categories");
         const select = document.getElementById("categorySelect");
-        select.innerHTML = '<option value="">-- 不选择分类 --</option>' +
+        select.innerHTML = '<option value="">' + t("no_cat") + '</option>' +
           data.categories.map(function(c) { return '<option value="' + c.id + '">' + c.name + '</option>'; }).join("");
       } catch(e) { console.error(e); }
     }
@@ -221,7 +227,7 @@
     }
 
     async function uploadFile() {
-      if (!selectedFile) { showToast("请选择文件", "error"); return; }
+      if (!selectedFile) { showToast(t("select_file_first"), "error"); return; }
 
       const title = document.getElementById("title").value.trim();
       const description = document.getElementById("description").value.trim();
@@ -229,7 +235,7 @@
 
       document.getElementById("uploadBtn").disabled = true;
       document.getElementById("progressArea").style.display = "block";
-      document.getElementById("progressText").textContent = "准备上传...";
+      document.getElementById("progressText").textContent = t("progress_preparing");
       setProgress(5);
 
       try {
@@ -239,26 +245,26 @@
         if (selectedFile.size > 2 * 1024 * 1024) {
           const isImage = ["image/jpeg", "image/png", "image/webp"].includes(selectedFile.type);
           if (isImage) {
-            document.getElementById("progressText").textContent = "正在压缩图片...";
+            document.getElementById("progressText").textContent = t("progress_compressing");
             setProgress(10);
             fileToUpload = await compressImage(selectedFile);
             if (fileToUpload.size > 25 * 1024 * 1024) {
-              showToast("图片压缩后仍超过25MB，请换更小的图片", "error");
+              showToast(t("img_still_large"), "error");
               document.getElementById("uploadBtn").disabled = false;
               document.getElementById("progressArea").style.display = "none";
               return;
             }
-            showToast("图片已自动压缩: " + formatSize(selectedFile.size) + " → " + formatSize(fileToUpload.size));
+            showToast(t("img_compressed", { a: formatSize(selectedFile.size), b: formatSize(fileToUpload.size) }));
           }
         }
 
-        document.getElementById("progressText").textContent = "读取文件...";
+        document.getElementById("progressText").textContent = t("progress_reading");
         setProgress(20);
 
         const arrayBuffer = await fileToUpload.arrayBuffer();
         const base64Data = arrayBufferToBase64(arrayBuffer);
 
-        document.getElementById("progressText").textContent = "上传中...";
+        document.getElementById("progressText").textContent = t("progress_uploading");
         setProgress(50);
 
         await api("/documents", {
@@ -275,8 +281,8 @@
         });
 
         setProgress(100);
-        document.getElementById("progressText").textContent = "上传成功！";
-        showToast("上传成功！");
+        document.getElementById("progressText").textContent = t("upload_success");
+        showToast(t("upload_success"));
         setTimeout(function() { location.href = "/admin.html"; }, 1000);
       } catch(err) {
         showToast(err.message, "error");
@@ -284,6 +290,16 @@
         document.getElementById("progressArea").style.display = "none";
       }
     }
+
+    // 语言切换时刷新动态内容（分类下拉框、上传区文案）
+    window.onLangChange = function() {
+      document.title = t("page_title_upload");
+      loadCategories();
+      // 已选文件时显示文件名，否则显示提示文案
+      if (!selectedFile) {
+        document.getElementById("uploadZoneText").textContent = t("drop_hint");
+      }
+    };
 
     loadCategories();
   </script>

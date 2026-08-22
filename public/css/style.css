@@ -521,12 +521,49 @@ tr:hover td {
   margin-bottom: 12px;
 }
 
+/* 语言切换 */
+.lang-switch {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-left: 12px;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255,255,255,0.25);
+}
+
+.lang-btn {
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.4);
+  background: transparent;
+  color: rgba(255,255,255,0.85);
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1.2;
+}
+
+.lang-btn:hover {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+}
+
+.lang-btn.active {
+  background: #fff;
+  color: var(--primary);
+  border-color: #fff;
+}
+
 /* 响应式 */
 @media (max-width: 768px) {
   .container { padding: 12px; }
   .navbar { padding: 0 12px; }
   .navbar-brand { font-size: 16px; }
   .navbar-nav a span { display: none; }
+  .navbar-nav { gap: 10px; }
+  .lang-switch { margin-left: 6px; padding-left: 8px; gap: 2px; }
+  .lang-btn { padding: 3px 6px; font-size: 11px; }
   .search-bar { flex-direction: column; }
   .doc-grid { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }

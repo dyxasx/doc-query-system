@@ -15,16 +15,18 @@
   <script src="/js/app.js"></script>
   <script>
     document.getElementById("navbar").innerHTML = renderNavbar("home");
+    applyI18n();
+    document.title = t("page_title_view");
 
     const params = new URLSearchParams(location.search);
     const docId = params.get("id");
 
     async function loadDoc() {
-      if (!docId) { showToast("参数错误", "error"); return; }
+      if (!docId) { showToast(t("param_error"), "error"); return; }
       try {
         const doc = await api("/documents/" + docId);
         const fileUrl = "/api/documents/" + docId + "/file";
-        
+
         let previewHtml = "";
         if (doc.isImage) {
           previewHtml = '<img src="' + fileUrl + '" alt="' + doc.title + '">';
@@ -38,9 +40,9 @@
         } else {
           previewHtml = '<div style="text-align:center;padding:60px;">' +
             '<i class="fa-solid ' + doc.fileIcon + '" style="font-size:80px;color:var(--text-light);opacity:0.3;margin-bottom:16px;"></i>' +
-            '<p style="color:var(--text-light);margin-bottom:24px;">此文件类型不支持在线预览</p>' +
+            '<p style="color:var(--text-light);margin-bottom:24px;">' + t("no_preview") + '</p>' +
             '<a href="' + fileUrl + '" download="' + doc.filename + '" class="btn btn-primary">' +
-            '<i class="fa-solid fa-download"></i> 下载文件</a></div>';
+            '<i class="fa-solid fa-download"></i> ' + t("btn_download_file") + '</a></div>';
         }
 
         let html = '<div class="preview-container">' +
@@ -51,29 +53,34 @@
                 (doc.category ? '<span class="doc-card-cat"><i class="fa-solid ' + doc.category.icon + '"></i> ' + doc.category.name + '</span> &nbsp;' : "") +
                 '<i class="fa-solid ' + doc.fileIcon + '"></i> ' + doc.filetype.toUpperCase() + ' &nbsp;' +
                 '<i class="fa-solid fa-weight-hanging"></i> ' + doc.fileSizeFormatted + ' &nbsp;' +
-                '<i class="fa-solid fa-clock"></i> ' + doc.uploadTimeFormatted + ' &nbsp;' +
-                '<i class="fa-solid fa-download"></i> ' + (doc.downloadCount || 0) + ' 次' +
+                '<i class="fa-solid fa-clock"></i> ' + formatDate(doc.uploadTime) + ' &nbsp;' +
+                '<i class="fa-solid fa-download"></i> ' + (doc.downloadCount || 0) + ' ' + t("times_unit") +
               '</div>' +
             '</div>' +
             '<div style="display:flex;gap:8px;">' +
-              '<a href="' + fileUrl + '" download="' + doc.filename + '" class="btn btn-primary btn-sm"><i class="fa-solid fa-download"></i> 下载</a>' +
-              '<a href="/index.html" class="btn btn-outline btn-sm"><i class="fa-solid fa-arrow-left"></i> 返回</a>' +
+              '<a href="' + fileUrl + '" download="' + doc.filename + '" class="btn btn-primary btn-sm"><i class="fa-solid fa-download"></i> ' + t("btn_download") + '</a>' +
+              '<a href="/index.html" class="btn btn-outline btn-sm"><i class="fa-solid fa-arrow-left"></i> ' + t("btn_back") + '</a>' +
             '</div>' +
           '</div>' +
           '<div style="padding:12px 24px;background:var(--bg);font-size:14px;color:var(--text-light);">' +
-            (doc.description ? '<i class="fa-solid fa-align-left"></i> ' + doc.description : '<i class="fa-solid fa-align-left"></i> 暂无描述') +
+            (doc.description ? '<i class="fa-solid fa-align-left"></i> ' + doc.description : '<i class="fa-solid fa-align-left"></i> ' + t("no_desc")) +
           '</div>' +
           '<div class="preview-body">' + previewHtml + '</div>' +
         '</div>';
 
         document.getElementById("docDetail").innerHTML = html;
-        document.title = doc.title + " - 文档中心";
+        document.title = doc.title + " - " + t("app_title");
       } catch(e) {
-        document.getElementById("docDetail").innerHTML = 
-          '<div class="empty-state"><i class="fa-solid fa-circle-exclamation"></i><p>加载失败: ' + e.message + '</p>' +
-          '<a href="/index.html" class="btn btn-primary" style="margin-top:16px;">返回首页</a></div>';
+        document.getElementById("docDetail").innerHTML =
+          '<div class="empty-state"><i class="fa-solid fa-circle-exclamation"></i><p>' + t("load_failed") + ': ' + e.message + '</p>' +
+          '<a href="/index.html" class="btn btn-primary" style="margin-top:16px;">' + t("btn_back_home") + '</a></div>';
       }
     }
+
+    // 语言切换时重新加载
+    window.onLangChange = function() {
+      loadDoc();
+    };
 
     loadDoc();
   </script>
