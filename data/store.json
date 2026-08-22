@@ -5,11 +5,6 @@
   },
   "categories": [
     {
-      "id": "cat-2",
-      "name": "技术文档",
-      "icon": "fa-code"
-    },
-    {
       "id": "cat-5",
       "name": "其他",
       "icon": "fa-folder"
