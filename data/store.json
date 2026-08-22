@@ -10,20 +10,6 @@
       "icon": "fa-folder"
     }
   ],
-  "documents": [
-    {
-      "id": "doc-1787298709221-hvh1kq",
-      "title": "HCD英文版操作维修说明书说明书20260526(HCD96200-405046-000)",
-      "description": "",
-      "categoryId": null,
-      "filename": "HCD英文版操作维修说明书说明书20260526(HCD96200-405046-000).pdf",
-      "filetype": "pdf",
-      "mimeType": "application/pdf",
-      "fileSize": 835927,
-      "downloadCount": 0,
-      "uploadTime": 1787298709251,
-      "filePath": "data/files/doc-1787298709221-hvh1kq-HCD英文版操作维修说明书说明书20260526_HCD96200-405046-000_.pdf"
-    }
-  ],
+  "documents": [],
   "initialized": true
 }
