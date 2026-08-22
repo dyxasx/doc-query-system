@@ -10,20 +10,6 @@
       "icon": "fa-folder"
     }
   ],
-  "documents": [
-    {
-      "id": "doc-1787379893681-9ezzob",
-      "title": "HCB英文单相电充电机操作维修说明书20260303(HCB8035R-101000-000)",
-      "description": "",
-      "categoryId": null,
-      "filename": "HCB英文单相电充电机操作维修说明书20260303(HCB8035R-101000-000).pdf",
-      "filetype": "pdf",
-      "mimeType": "application/pdf",
-      "fileSize": 2224098,
-      "filePath": "data/files/doc-1787379893681-9ezzob-HCB英文单相电充电机操作维修说明书20260303_HCB8035R-101000-000_.pdf",
-      "downloadCount": 0,
-      "uploadTime": 1787379896734
-    }
-  ],
+  "documents": [],
   "initialized": true
 }
