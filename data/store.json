@@ -4,20 +4,6 @@
     "password": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
   },
   "categories": [],
-  "documents": [
-    {
-      "id": "doc-1787370480243-wsrjim",
-      "title": "HCC英文三相电充电机操作维修说明书20260303(HCC80200-405046-100)",
-      "description": "",
-      "categoryId": null,
-      "filename": "HCC英文三相电充电机操作维修说明书20260303(HCC80200-405046-100).pdf",
-      "filetype": "pdf",
-      "mimeType": "application/pdf",
-      "fileSize": 4661159,
-      "filePath": "data/files/doc-1787370480243-wsrjim-HCC英文三相电充电机操作维修说明书20260303_HCC80200-405046-100_.pdf",
-      "downloadCount": 0,
-      "uploadTime": 1787370482873
-    }
-  ],
+  "documents": [],
   "initialized": true
 }
