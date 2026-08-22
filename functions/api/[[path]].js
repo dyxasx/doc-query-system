@@ -1,4 +1,7 @@
 // Cloudflare Pages Functions - 处理所有 /api/* 请求
+// v3: 读取直连 GitHub REST API（无 CDN 缓存，实时数据）；
+//     写入改用 Git Data API（blobs/trees/commits/refs），突破 Contents API 的 1MB 限制；
+//     写入失败会直接报错返回前端，不再静默吞掉（避免"显示成功但数据没存上"）。
 // 部署：Cloudflare Pages，functions 目录自动识别
 // 环境：wrangler 原生 runtime（无 Buffer，用 atob/btoa；无 Node crypto，用 Web Crypto）
 
@@ -15,8 +18,9 @@ function getEnv(env) {
 
 const DATA_FILE = "data/store.json";
 const FILES_DIR = "data/files";
+const API_VERSION = "v3";
 
-// 内存缓存（同一 isolate 内复用，减少 GitHub API 调用）
+// 内存缓存（同一 isolate 内复用，减少 GitHub API 调用；写操作会同步刷新）
 let _cache = null;
 let _cacheTime = 0;
 const CACHE_TTL = 5000;
@@ -85,7 +89,7 @@ function verifyToken(authHeader) {
   }
 }
 
-// ========== GitHub API ==========
+// ========== GitHub API（全部直连 api.github.com，无 CDN 缓存） ==========
 
 function ghHeaders(cfg) {
   return {
@@ -96,26 +100,38 @@ function ghHeaders(cfg) {
   };
 }
 
-async function githubRaw(cfg, path) {
-  // 加时间戳参数绕过 CDN 缓存（raw.githubusercontent.com 有约5分钟缓存，
-  // 会导致：删除的文档"复活"、新上传的文档最长5分钟不可见、并发写入时旧数据覆盖新数据）
-  const url = `https://raw.githubusercontent.com/${cfg.GH_OWNER}/${cfg.GH_REPO}/${cfg.GH_BRANCH}/${path}?_=${Date.now()}`;
-  const headers = cfg.GH_TOKEN ? { "Authorization": `Bearer ${cfg.GH_TOKEN}` } : {};
-  return fetch(url, { headers, cf: { cacheTtl: 0, cacheEverything: false } });
+async function ghApi(cfg, apiPath, options = {}) {
+  const url = `https://api.github.com/repos/${cfg.GH_OWNER}/${cfg.GH_REPO}${apiPath}`;
+  return fetch(url, {
+    ...options,
+    headers: { ...ghHeaders(cfg), ...(options.headers || {}) },
+    cf: { cacheTtl: 0, cacheEverything: false },
+  });
 }
 
 async function loadData(cfg) {
   if (_cache && Date.now() - _cacheTime < CACHE_TTL) return _cache;
   let status = 0;
   try {
-    const res = await githubRaw(cfg, DATA_FILE);
-    status = res.status;
-    if (res.status === 200) {
-      _cache = JSON.parse(await res.text());
+    // 直连 Contents API 读元数据（带认证的 API 请求不会被 CDN 缓存，永远是最新数据）
+    const metaRes = await ghApi(cfg, `/contents/${DATA_FILE}?ref=${cfg.GH_BRANCH}`);
+    status = metaRes.status;
+    if (metaRes.status === 200) {
+      const meta = await metaRes.json();
+      let b64 = meta.content;
+      if (!b64) {
+        // store.json 超过 1MB 时 Contents API 不返回内容，改用 Blobs API（支持到 100MB）
+        const blobRes = await ghApi(cfg, `/git/blobs/${meta.sha}`);
+        if (blobRes.status !== 200) throw new Error(`读取 blob 失败: HTTP ${blobRes.status}`);
+        b64 = (await blobRes.json()).content;
+      }
+      const bytes = b64ToBytes(b64.replace(/\n/g, ""));
+      const text = new TextDecoder("utf-8").decode(bytes);
+      _cache = JSON.parse(text);
       _cacheTime = Date.now();
       return _cache;
     }
-    if (res.status === 404) {
+    if (metaRes.status === 404) {
       // 首次使用：store.json 不存在，初始化默认数据
       const adminHash = await hashPassword("admin123");
       _cache = getDefaultData(adminHash);
@@ -131,74 +147,82 @@ async function loadData(cfg) {
   throw new Error(`存储读取失败（HTTP ${status}），请稍后重试`);
 }
 
+async function getBranchHead(cfg) {
+  const res = await ghApi(cfg, `/git/ref/heads/${cfg.GH_BRANCH}`);
+  if (res.status !== 200) throw new Error(`获取分支 HEAD 失败: HTTP ${res.status}`);
+  return (await res.json()).object.sha;
+}
+
+// 通过 Git Data API 提交文件变更（支持超过 1MB 的大文件）
+// changes: [{ path, sha }]，sha 为已存在的 blob sha；sha 为 null 表示删除该文件
+async function commitFiles(cfg, message, changes) {
+  if (!cfg.GH_TOKEN) throw new Error("GITHUB_TOKEN 未配置");
+
+  const head = await getBranchHead(cfg);
+  const headRes = await ghApi(cfg, `/git/commits/${head}`);
+  if (headRes.status !== 200) throw new Error(`读取提交失败: HTTP ${headRes.status}`);
+  const headCommit = await headRes.json();
+
+  const treeRes = await ghApi(cfg, `/git/trees`, {
+    method: "POST",
+    body: JSON.stringify({
+      base_tree: headCommit.tree.sha,
+      tree: changes.map(c => ({ path: c.path, mode: "100644", type: "blob", sha: c.sha })),
+    }),
+  });
+  if (treeRes.status !== 201) {
+    throw new Error(`创建树失败: HTTP ${treeRes.status} ${(await treeRes.text()).slice(0, 200)}`);
+  }
+  const treeSha = (await treeRes.json()).sha;
+
+  const commitRes = await ghApi(cfg, `/git/commits`, {
+    method: "POST",
+    body: JSON.stringify({ message, tree: treeSha, parents: [head] }),
+  });
+  if (commitRes.status !== 201) throw new Error(`创建提交失败: HTTP ${commitRes.status}`);
+  const commitSha = (await commitRes.json()).sha;
+
+  const refRes = await ghApi(cfg, `/git/refs/heads/${cfg.GH_BRANCH}`, {
+    method: "PATCH",
+    body: JSON.stringify({ sha: commitSha }),
+  });
+  if (refRes.status !== 200) {
+    throw new Error(`更新分支失败: HTTP ${refRes.status}（可能存在并发写入，请重试）`);
+  }
+  return commitSha;
+}
+
 async function saveData(cfg, data) {
   _cache = data;
   _cacheTime = Date.now();
   if (!cfg.GH_TOKEN) return;
 
-  try {
-    let sha = null;
-    const getUrl = `https://api.github.com/repos/${cfg.GH_OWNER}/${cfg.GH_REPO}/contents/${DATA_FILE}?ref=${cfg.GH_BRANCH}`;
-    const getRes = await fetch(getUrl, { headers: ghHeaders(cfg) });
-    if (getRes.status === 200) {
-      sha = (await getRes.json()).sha;
-    }
+  const content = strToB64(JSON.stringify(data, null, 2));
+  const blobRes = await ghApi(cfg, `/git/blobs`, {
+    method: "POST",
+    body: JSON.stringify({ content, encoding: "base64" }),
+  });
+  if (blobRes.status !== 201) throw new Error(`写入存储失败（blob HTTP ${blobRes.status}）`);
+  const blobSha = (await blobRes.json()).sha;
 
-    const body = {
-      message: "update store data",
-      content: strToB64(JSON.stringify(data, null, 2)),
-      branch: cfg.GH_BRANCH,
-    };
-    if (sha) body.sha = sha;
-
-    const putRes = await fetch(getUrl, {
-      method: "PUT",
-      headers: ghHeaders(cfg),
-      body: JSON.stringify(body),
-    });
-    if (putRes.status === 200 || putRes.status === 201) {
-      console.log("[store] saveData success");
-    } else {
-      console.log("[store] saveData failed:", putRes.status, await putRes.text());
-    }
-  } catch (e) {
-    console.log("[store] saveData error:", e.message);
-  }
+  await commitFiles(cfg, "update store data", [{ path: DATA_FILE, sha: blobSha }]);
 }
 
 async function uploadFileToGitHub(cfg, filePath, base64Content) {
   if (!cfg.GH_TOKEN) throw new Error("GITHUB_TOKEN 未配置");
-  const url = `https://api.github.com/repos/${cfg.GH_OWNER}/${cfg.GH_REPO}/contents/${filePath}?ref=${cfg.GH_BRANCH}`;
-  let sha = null;
-  const getRes = await fetch(url, { headers: ghHeaders(cfg) });
-  if (getRes.status === 200) sha = (await getRes.json()).sha;
-
-  const body = { message: `upload file ${filePath}`, content: base64Content, branch: cfg.GH_BRANCH };
-  if (sha) body.sha = sha;
-
-  const putRes = await fetch(url, {
-    method: "PUT",
-    headers: ghHeaders(cfg),
-    body: JSON.stringify(body),
+  const blobRes = await ghApi(cfg, `/git/blobs`, {
+    method: "POST",
+    body: JSON.stringify({ content: base64Content, encoding: "base64" }),
   });
-  if (putRes.status !== 200 && putRes.status !== 201) {
-    throw new Error(`GitHub 上传失败: ${putRes.status}`);
-  }
+  if (blobRes.status !== 201) throw new Error(`GitHub 上传失败（blob HTTP ${blobRes.status}）`);
+  const blobSha = (await blobRes.json()).sha;
+  await commitFiles(cfg, `upload file ${filePath}`, [{ path: filePath, sha: blobSha }]);
 }
 
 async function deleteFileFromGitHub(cfg, filePath) {
   if (!cfg.GH_TOKEN) return;
   try {
-    const url = `https://api.github.com/repos/${cfg.GH_OWNER}/${cfg.GH_REPO}/contents/${filePath}?ref=${cfg.GH_BRANCH}`;
-    const getRes = await fetch(url, { headers: ghHeaders(cfg) });
-    if (getRes.status === 200) {
-      const sha = (await getRes.json()).sha;
-      await fetch(url, {
-        method: "DELETE",
-        headers: ghHeaders(cfg),
-        body: JSON.stringify({ message: `delete file ${filePath}`, sha, branch: cfg.GH_BRANCH }),
-      });
-    }
+    await commitFiles(cfg, `delete file ${filePath}`, [{ path: filePath, sha: null }]);
   } catch (e) {
     console.log("[store] deleteFile error:", e.message);
   }
@@ -330,6 +354,7 @@ export async function onRequest(context) {
     if (method === "GET" && segments[0] === "health") {
       return json({
         ok: true,
+        version: API_VERSION,
         platform: "cloudflare",
         token: cfg.GH_TOKEN ? "set" : "missing",
         repo: `${cfg.GH_OWNER}/${cfg.GH_REPO}`,
@@ -449,9 +474,12 @@ async function handleDownloadFile(cfg, id) {
     ...CORS_HEADERS,
   };
 
-  // 新版：文件存在 GitHub 仓库 data/files/ 目录
+  // 文件本体存在 GitHub 仓库 data/files/ 目录
+  // 文件路径含唯一ID、内容不可变，直接走 raw（带认证头回源拿数据，不受 CDN 缓存影响）
   if (doc.filePath) {
-    const res = await githubRaw(cfg, doc.filePath);
+    const rawUrl = `https://raw.githubusercontent.com/${cfg.GH_OWNER}/${cfg.GH_REPO}/${cfg.GH_BRANCH}/${doc.filePath}`;
+    const headersRaw = cfg.GH_TOKEN ? { "Authorization": `Bearer ${cfg.GH_TOKEN}` } : {};
+    const res = await fetch(rawUrl, { headers: headersRaw, cf: { cacheTtl: 0, cacheEverything: false } });
     if (res.status === 200) {
       return new Response(res.body, { status: 200, headers });
     }
@@ -474,19 +502,22 @@ async function handleUploadDocument(cfg, body) {
   const bytes = b64ToBytes(fileData);
   const fileSize = bytes.length;
 
-  // 单文件最大 25MB（与前端一致；GitHub Contents API 单文件稳妥上限）
+  // 单文件最大 25MB（与前端一致）
   if (fileSize > 25 * 1024 * 1024) {
     return json({ error: "文件太大，最大支持25MB" }, 400);
   }
+
+  // 1. 先读最新数据（读取失败立即报错，不会留下孤儿文件）
+  const data = await loadData(cfg);
 
   const docId = "doc-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
   const safeName = safeFilename(filename);
   const filePath = `${FILES_DIR}/${docId}-${safeName}`;
 
-  // 1. 文件本体上传到 GitHub 仓库
+  // 2. 文件本体上传到 GitHub 仓库（Git Data API，支持大文件）
   await uploadFileToGitHub(cfg, filePath, fileData);
 
-  // 2. 元数据写入 store.json（不再内嵌 base64）
+  // 3. 元数据写入 store.json（不再内嵌 base64）
   const doc = {
     id: docId,
     title: title || filename.replace(/\.[^.]+$/, ""),
@@ -501,7 +532,6 @@ async function handleUploadDocument(cfg, body) {
     uploadTime: Date.now(),
   };
 
-  const data = await loadData(cfg);
   data.documents = data.documents || [];
   data.documents.push(doc);
   await saveData(cfg, data);
