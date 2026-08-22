@@ -16,25 +16,17 @@
       "filePath": "data/files/doc-1787377134747-2dryic-HCB中文三相电充电机操作维修说明书20260303_HCB8065R-101000-000_.pdf",
       "downloadCount": 0,
       "uploadTime": 1787377137702
-    },
-    {
-      "id": "doc-1787378012643-ufwkk1",
-      "title": "最终验证(马上删)",
-      "description": "",
-      "categoryId": null,
-      "filename": "final-test.txt",
-      "filetype": "txt",
-      "mimeType": "text/plain",
-      "fileSize": 27,
-      "filePath": "data/files/doc-1787378012643-ufwkk1-final-test.txt",
-      "downloadCount": 0,
-      "uploadTime": 1787378013598
     }
   ],
   "categories": [
     {
       "id": "cat-1787377116000",
       "name": "11",
+      "icon": "fa-folder"
+    },
+    {
+      "id": "cat-1787378031976",
+      "name": "分类测试",
       "icon": "fa-folder"
     }
   ],
