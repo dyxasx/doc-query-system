@@ -16,7 +16,7 @@
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
         <i class="fa-solid fa-cloud-arrow-up"></i>
         <div style="font-size:18px;margin-bottom:4px;" id="uploadZoneText">点击选择文件 或拖拽到此处</div>
-        <div style="font-size:13px;color:var(--text-light);">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 4MB，大图片自动压缩）</div>
+        <div style="font-size:13px;color:var(--text-light);">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 25MB，超过自动压缩图片）</div>
         <input type="file" id="fileInput" style="display:none;" onchange="onFileSelected(this)">
       </div>
 
@@ -114,12 +114,12 @@
 
       const isImage = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
 
-      if (file.size > 4 * 1024 * 1024) {
+      if (file.size > 25 * 1024 * 1024) {
         if (isImage) {
-          showToast("图片超过4MB，上传时会自动压缩", "success");
+          showToast("图片超过25MB，上传时会自动压缩", "success");
         } else {
           var ext = file.name.split(".").pop().toLowerCase();
-          var tips = "文件太大（" + formatSize(file.size) + "），最大支持4MB。";
+          var tips = "文件太大（" + formatSize(file.size) + "），最大支持25MB。";
           if (ext === "pdf") {
             tips += "推荐用 iLovePDF（ilovepdf.com/zh-cn/compress_pdf）在线免费压缩后重试";
           } else if (["doc", "docx", "ppt", "pptx"].includes(ext)) {
@@ -236,14 +236,14 @@
         let fileToUpload = selectedFile;
 
         // 大图片先自动压缩
-        if (selectedFile.size > 4 * 1024 * 1024) {
+        if (selectedFile.size > 2 * 1024 * 1024) {
           const isImage = ["image/jpeg", "image/png", "image/webp"].includes(selectedFile.type);
           if (isImage) {
             document.getElementById("progressText").textContent = "正在压缩图片...";
             setProgress(10);
             fileToUpload = await compressImage(selectedFile);
-            if (fileToUpload.size > 4 * 1024 * 1024) {
-              showToast("图片压缩后仍超过4MB，请换更小的图片", "error");
+            if (fileToUpload.size > 25 * 1024 * 1024) {
+              showToast("图片压缩后仍超过25MB，请换更小的图片", "error");
               document.getElementById("uploadBtn").disabled = false;
               document.getElementById("progressArea").style.display = "none";
               return;
