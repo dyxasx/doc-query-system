@@ -4,6 +4,20 @@
     "password": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
   },
   "categories": [],
-  "documents": [],
+  "documents": [
+    {
+      "id": "doc-1787377099453-c2ybsz",
+      "title": "缓存修复验证(稍后删)",
+      "description": "",
+      "categoryId": null,
+      "filename": "cache-test.txt",
+      "filetype": "txt",
+      "mimeType": "text/plain",
+      "fileSize": 35,
+      "filePath": "data/files/doc-1787377099453-c2ybsz-cache-test.txt",
+      "downloadCount": 0,
+      "uploadTime": 1787377100407
+    }
+  ],
   "initialized": true
 }
