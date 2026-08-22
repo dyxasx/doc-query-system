@@ -466,8 +466,9 @@ async function handleGetDocument(id) {
 
   if (!doc) return json({ error: "文档不存在" }, 404);
 
+  // 下载次数只更新内存缓存，不写回 GitHub
+  // （避免每次浏览都触发 saveData → git commit → Netlify 重新部署 的恶性循环）
   doc.downloadCount = (doc.downloadCount || 0) + 1;
-  await saveData(data);
 
   const cat = doc.categoryId ? (data.categories || []).find(c => c.id === doc.categoryId) : null;
 
