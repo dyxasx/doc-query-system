@@ -555,6 +555,58 @@ tr:hover td {
   border-color: #fff;
 }
 
+/* 批量上传队列 */
+.queue-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.queue-item-failed {
+  border-color: var(--danger);
+  background: rgba(239,68,68,0.04);
+}
+
+.queue-title {
+  background: var(--card-bg) !important;
+}
+
+.queue-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.qs-pending {
+  color: var(--text-light);
+  background: rgba(100,116,139,0.12);
+}
+
+.qs-uploading {
+  color: var(--info);
+  background: rgba(59,130,246,0.12);
+}
+
+.qs-success {
+  color: var(--success);
+  background: rgba(16,185,129,0.12);
+}
+
+.qs-failed {
+  color: var(--danger);
+  background: rgba(239,68,68,0.12);
+}
+
 /* 响应式 */
 @media (max-width: 768px) {
   .container { padding: 12px; }
@@ -564,6 +616,8 @@ tr:hover td {
   .navbar-nav { gap: 10px; }
   .lang-switch { margin-left: 6px; padding-left: 8px; gap: 2px; }
   .lang-btn { padding: 3px 6px; font-size: 11px; }
+  .queue-item { flex-wrap: wrap; padding: 10px 12px; }
+  .queue-status { order: 5; }
   .search-bar { flex-direction: column; }
   .doc-grid { grid-template-columns: 1fr; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }

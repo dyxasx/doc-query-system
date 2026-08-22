@@ -9,52 +9,53 @@
 </head>
 <body>
   <div id="navbar"></div>
-  <div class="container" style="max-width:700px;">
+  <div class="container" style="max-width:760px;">
     <h2 style="margin-bottom:24px;"><i class="fa-solid fa-upload"></i> <span data-i18n="page_title_upload">上传文档</span></h2>
 
     <div class="search-section">
+      <!-- 上传区（支持多选/拖拽多个） -->
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
         <i class="fa-solid fa-cloud-arrow-up"></i>
-        <div style="font-size:18px;margin-bottom:4px;" id="uploadZoneText" data-i18n="drop_hint">点击选择文件 或拖拽到此处</div>
+        <div style="font-size:18px;margin-bottom:4px;" id="uploadZoneText" data-i18n="batch_drop_hint">点击选择文件（支持多选）或拖拽到此处</div>
         <div style="font-size:13px;color:var(--text-light);" data-i18n="file_type_hint">支持 PDF / Word / Excel / PPT / 图片 / TXT / 压缩包等（最大 25MB，超过自动压缩图片）</div>
-        <input type="file" id="fileInput" style="display:none;" onchange="onFileSelected(this)">
+        <input type="file" id="fileInput" style="display:none;" multiple onchange="onFilesSelected(this)">
       </div>
 
-      <div id="fileForm" style="display:none;margin-top:24px;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;padding:12px 16px;background:var(--bg);border-radius:8px;">
-          <i class="fa-solid fa-file" id="filePreviewIcon" style="font-size:24px;color:var(--primary);"></i>
-          <div style="flex:1;">
-            <div style="font-weight:500;" id="fileNameDisplay"></div>
-            <div style="font-size:13px;color:var(--text-light);" id="fileSizeDisplay"></div>
+      <!-- 文件队列 -->
+      <div id="queueArea" style="display:none;margin-top:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h3 style="font-size:16px;"><i class="fa-solid fa-list-check"></i> <span data-i18n="file_queue">文件队列</span> <span id="queueSummary" style="font-weight:400;font-size:13px;color:var(--text-light);"></span></h3>
+          <button class="btn btn-outline btn-sm" onclick="clearQueue()"><i class="fa-solid fa-trash-can"></i> <span data-i18n="clear_list">清空列表</span></button>
+        </div>
+        <div id="fileQueue" style="display:flex;flex-direction:column;gap:10px;"></div>
+
+        <!-- 共享设置 -->
+        <div style="margin-top:20px;">
+          <div class="form-group">
+            <label class="form-label" data-i18n="doc_desc_label">文档描述</label>
+            <textarea class="form-control" id="description" data-i18n-ph="desc_ph" placeholder="简要描述文档内容（可选）"></textarea>
           </div>
-          <button class="btn btn-outline btn-sm" onclick="resetFile()"><i class="fa-solid fa-xmark"></i> <span data-i18n="btn_remove">移除</span></button>
+          <div class="form-group">
+            <label class="form-label" data-i18n="doc_cat_label">所属分类</label>
+            <select class="form-control" id="categorySelect"></select>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" data-i18n="doc_title_label">文档标题</label>
-          <input type="text" class="form-control" id="title" data-i18n-ph="title_ph" placeholder="留空则使用文件名">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" data-i18n="doc_desc_label">文档描述</label>
-          <textarea class="form-control" id="description" data-i18n-ph="desc_ph" placeholder="简要描述文档内容（可选）"></textarea>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" data-i18n="doc_cat_label">所属分类</label>
-          <select class="form-control" id="categorySelect"></select>
-        </div>
-
-        <button class="btn btn-primary" style="width:100%;justify-content:center;" id="uploadBtn" onclick="uploadFile()">
-          <i class="fa-solid fa-upload"></i> <span data-i18n="btn_start_upload">开始上传</span>
+        <button class="btn btn-primary" style="width:100%;justify-content:center;" id="uploadBtn" onclick="uploadAll()">
+          <i class="fa-solid fa-cloud-arrow-up"></i> <span id="uploadBtnText"></span>
         </button>
+        <div style="display:flex;gap:10px;margin-top:12px;">
+          <button class="btn btn-outline" style="flex:1;display:none;" id="retryBtn" onclick="uploadAll(true)"><i class="fa-solid fa-rotate-right"></i> <span data-i18n="retry_failed">重试失败项</span></button>
+          <a href="/admin.html" class="btn btn-outline" style="flex:1;display:none;justify-content:center;" id="backBtn"><i class="fa-solid fa-arrow-left"></i> <span data-i18n="btn_back_admin">返回管理</span></a>
+        </div>
       </div>
 
+      <!-- 批量进度 -->
       <div id="progressArea" style="display:none;margin-top:20px;">
         <div style="background:var(--bg);border-radius:8px;padding:20px;text-align:center;">
           <i class="fa-solid fa-spinner fa-spin" style="font-size:32px;color:var(--primary);"></i>
-          <div style="margin-top:12px;" id="progressText">正在上传...</div>
-          <div id="progressBar" style="margin-top:12px;background:#e5e7eb;border-radius:4px;height:8px;overflow:hidden;">
+          <div style="margin-top:12px;" id="progressText"></div>
+          <div style="margin-top:12px;background:#e5e7eb;border-radius:4px;height:8px;overflow:hidden;">
             <div id="progressBarFill" style="height:100%;background:var(--primary);width:0%;transition:width 0.3s;"></div>
           </div>
         </div>
@@ -69,7 +70,8 @@
     applyI18n();
     document.title = t("page_title_upload");
 
-    let selectedFile = null;
+    // 队列项: { file, title, status: pending|uploading|success|failed, error }
+    let queue = [];
 
     function getFileIcon(filename) {
       var ext = filename.split(".").pop().toLowerCase();
@@ -98,6 +100,7 @@
       return map[ext] || "application/octet-stream";
     }
 
+    // ========== 拖拽支持 ==========
     const uploadZone = document.getElementById("uploadZone");
     uploadZone.addEventListener("dragover", function(e) { e.preventDefault(); uploadZone.classList.add("dragover"); });
     uploadZone.addEventListener("dragleave", function() { uploadZone.classList.remove("dragover"); });
@@ -105,57 +108,106 @@
       e.preventDefault();
       uploadZone.classList.remove("dragover");
       if (e.dataTransfer.files.length) {
-        document.getElementById("fileInput").files = e.dataTransfer.files;
-        onFileSelected({ files: e.dataTransfer.files });
+        addFiles(e.dataTransfer.files);
       }
     });
 
-    function onFileSelected(input) {
-      const file = input.files && input.files[0];
-      if (!file) return;
+    function onFilesSelected(input) {
+      if (input.files && input.files.length) addFiles(input.files);
+      input.value = "";
+    }
 
-      const isImage = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
-
-      if (file.size > 25 * 1024 * 1024) {
-        if (isImage) {
-          showToast(t("img_over_25"), "success");
-        } else {
-          var ext = file.name.split(".").pop().toLowerCase();
-          var tips = t("file_too_large", { s: formatSize(file.size) });
-          if (ext === "pdf") {
-            tips += " " + t("tip_pdf");
-          } else if (["doc", "docx", "ppt", "pptx"].includes(ext)) {
-            tips += " " + t("tip_doc");
-          } else if (["zip", "rar", "7z"].includes(ext)) {
-            tips += " " + t("tip_zip");
-          } else {
-            tips += " " + t("tip_generic");
-          }
-          showToast(tips, "error");
-          return;
+    function addFiles(fileList) {
+      let rejected = [];
+      for (const file of fileList) {
+        const isImage = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+        if (file.size > 25 * 1024 * 1024 && !isImage) {
+          rejected.push(file.name + " (" + formatSize(file.size) + ")");
+          continue;
         }
+        queue.push({
+          file: file,
+          title: file.name.replace(/\.[^.]+$/, ""),
+          status: "pending",
+          error: ""
+        });
       }
-
-      selectedFile = file;
-      document.getElementById("uploadZoneText").removeAttribute("data-i18n");
-      document.getElementById("uploadZoneText").textContent = file.name;
-      document.getElementById("filePreviewIcon").className = "fa-solid " + getFileIcon(file.name);
-      document.getElementById("fileNameDisplay").textContent = file.name;
-      document.getElementById("fileSizeDisplay").textContent = formatSize(file.size);
-      document.getElementById("fileForm").style.display = "block";
-      document.getElementById("title").value = file.name.replace(/\.[^.]+$/, "");
+      if (rejected.length) {
+        showToast(t("file_too_large", { s: rejected.join(", ") }), "error");
+      }
+      renderQueue();
     }
 
-    function resetFile() {
-      selectedFile = null;
-      document.getElementById("fileInput").value = "";
-      // 恢复提示文案的翻译标记并应用当前语言
-      var zoneText = document.getElementById("uploadZoneText");
-      zoneText.setAttribute("data-i18n", "drop_hint");
-      zoneText.textContent = t("drop_hint");
-      document.getElementById("fileForm").style.display = "none";
+    function removeItem(idx) { queue.splice(idx, 1); renderQueue(); }
+    function clearQueue() {
+      // 保留正在上传中的项
+      queue = queue.filter(function(q) { return q.status === "uploading"; });
+      renderQueue();
+    }
+    function updateTitle(idx, value) { queue[idx].title = value; }
+
+    // ========== 队列渲染 ==========
+    const STATUS_META = {
+      pending:   { icon: "fa-clock",        cls: "qs-pending",   key: "status_pending" },
+      uploading: { icon: "fa-spinner fa-spin", cls: "qs-uploading", key: "status_uploading" },
+      success:   { icon: "fa-circle-check", cls: "qs-success",   key: "status_success" },
+      failed:    { icon: "fa-circle-xmark", cls: "qs-failed",    key: "status_failed" },
+    };
+
+    function renderQueue() {
+      const area = document.getElementById("queueArea");
+      const listEl = document.getElementById("fileQueue");
+
+      if (queue.length === 0) {
+        area.style.display = "none";
+        document.getElementById("uploadZoneText").textContent = t("batch_drop_hint");
+        return;
+      }
+      area.style.display = "block";
+
+      let totalSize = 0;
+      queue.forEach(function(q) { totalSize += q.file.size; });
+      document.getElementById("queueSummary").textContent = " · " + t("queue_summary", { n: queue.length, s: formatSize(totalSize) });
+
+      listEl.innerHTML = queue.map(function(q, idx) {
+        const meta = STATUS_META[q.status];
+        const uploading = q.status === "uploading";
+        // 仅成功后锁定标题（失败项保留可编辑，便于修正后重试）
+        const locked = q.status === "success";
+        return '<div class="queue-item ' + (q.status === "failed" ? "queue-item-failed" : "") + '">' +
+          '<i class="fa-solid ' + getFileIcon(q.file.name) + '" style="font-size:22px;color:var(--primary);width:28px;text-align:center;flex-shrink:0;"></i>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<input type="text" class="form-control queue-title" value="' + q.title.replace(/"/g, "&quot;") + '" ' +
+                'oninput="updateTitle(' + idx + ', this.value)" ' +
+                (locked || uploading ? "disabled" : "") + ' ' +
+                'placeholder="' + t("title_per_file") + '" style="padding:6px 10px;font-size:14px;">' +
+            '</div>' +
+            '<div style="font-size:12px;color:var(--text-light);margin-top:4px;display:flex;justify-content:space-between;gap:8px;">' +
+              '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + q.file.name + '</span>' +
+              '<span style="flex-shrink:0;">' + formatSize(q.file.size) + '</span>' +
+            '</div>' +
+            (q.error ? '<div style="font-size:12px;color:var(--danger);margin-top:2px;">' + q.error + '</div>' : "") +
+          '</div>' +
+          '<span class="queue-status ' + meta.cls + '"><i class="fa-solid ' + meta.icon + '"></i> ' + t(meta.key) + '</span>' +
+          (!uploading ? '<button class="btn btn-outline btn-sm" style="flex-shrink:0;" onclick="removeItem(' + idx + ')" title="' + t("btn_remove") + '"><i class="fa-solid fa-xmark"></i></button>' : '<span style="width:38px;flex-shrink:0;"></span>') +
+        '</div>';
+      }).join("");
+
+      // 更新上传按钮文案
+      const btn = document.getElementById("uploadBtnText");
+      const pendingCount = queue.filter(function(q) { return q.status === "pending" || q.status === "failed"; }).length;
+      btn.textContent = t("btn_upload_all", { n: pendingCount });
+      document.getElementById("uploadBtn").disabled = pendingCount === 0;
+
+      // 完成态按钮
+      const hasFailed = queue.some(function(q) { return q.status === "failed"; });
+      const allDone = queue.length > 0 && queue.every(function(q) { return q.status === "success" || q.status === "failed"; });
+      document.getElementById("retryBtn").style.display = (allDone && hasFailed) ? "flex" : "none";
+      document.getElementById("backBtn").style.display = allDone ? "flex" : "none";
     }
 
+    // ========== 分类加载 ==========
     async function loadCategories() {
       try {
         const data = await api("/categories");
@@ -165,6 +217,7 @@
       } catch(e) { console.error(e); }
     }
 
+    // ========== 工具 ==========
     function setProgress(p) {
       document.getElementById("progressBarFill").style.width = p + "%";
     }
@@ -179,11 +232,10 @@
       return btoa(binary);
     }
 
-    // ========== 图片自动压缩 ==========
     // 超过 1MB 的图片自动用 canvas 压缩（JPG/PNG/WebP）
     async function compressImage(file) {
       if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return file;
-      if (file.size <= 1024 * 1024) return file; // 1MB 内不压
+      if (file.size <= 1024 * 1024) return file;
 
       return new Promise(function(resolve) {
         const img = new Image();
@@ -192,30 +244,25 @@
           URL.revokeObjectURL(url);
           let quality = 0.8;
           let w = img.width, h = img.height;
-
-          // 长边超 3000px 则缩小
           const maxSide = 3000;
           if (w > maxSide || h > maxSide) {
             const scale = maxSide / Math.max(w, h);
             w = Math.round(w * scale);
             h = Math.round(h * scale);
           }
-
           const canvas = document.createElement("canvas");
           canvas.width = w; canvas.height = h;
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, w, h);
-
           const tryCompress = function(q) {
             canvas.toBlob(function(blob) {
               if (blob && blob.size < file.size) {
-                // 压缩有效，返回新 File
                 const newFile = new File([blob], file.name.replace(/\.(png|webp)$/i, ".jpg"), { type: "image/jpeg" });
                 resolve(newFile);
               } else if (q > 0.3) {
                 tryCompress(q - 0.2);
               } else {
-                resolve(file); // 压不动了，用原文件
+                resolve(file);
               }
             }, "image/jpeg", q);
           };
@@ -226,81 +273,94 @@
       });
     }
 
-    async function uploadFile() {
-      if (!selectedFile) { showToast(t("select_file_first"), "error"); return; }
+    // ========== 单文件上传 ==========
+    async function uploadOne(item) {
+      let fileToUpload = item.file;
 
-      const title = document.getElementById("title").value.trim();
-      const description = document.getElementById("description").value.trim();
-      const categoryId = document.getElementById("categorySelect").value;
-
-      document.getElementById("uploadBtn").disabled = true;
-      document.getElementById("progressArea").style.display = "block";
-      document.getElementById("progressText").textContent = t("progress_preparing");
-      setProgress(5);
-
-      try {
-        let fileToUpload = selectedFile;
-
-        // 大图片先自动压缩
-        if (selectedFile.size > 2 * 1024 * 1024) {
-          const isImage = ["image/jpeg", "image/png", "image/webp"].includes(selectedFile.type);
-          if (isImage) {
-            document.getElementById("progressText").textContent = t("progress_compressing");
-            setProgress(10);
-            fileToUpload = await compressImage(selectedFile);
-            if (fileToUpload.size > 25 * 1024 * 1024) {
-              showToast(t("img_still_large"), "error");
-              document.getElementById("uploadBtn").disabled = false;
-              document.getElementById("progressArea").style.display = "none";
-              return;
-            }
-            showToast(t("img_compressed", { a: formatSize(selectedFile.size), b: formatSize(fileToUpload.size) }));
-          }
+      // 大图片自动压缩
+      if (item.file.size > 2 * 1024 * 1024 && ["image/jpeg", "image/png", "image/webp"].includes(item.file.type)) {
+        fileToUpload = await compressImage(item.file);
+        if (fileToUpload.size > 25 * 1024 * 1024) {
+          throw new Error(t("img_still_large"));
         }
-
-        document.getElementById("progressText").textContent = t("progress_reading");
-        setProgress(20);
-
-        const arrayBuffer = await fileToUpload.arrayBuffer();
-        const base64Data = arrayBufferToBase64(arrayBuffer);
-
-        document.getElementById("progressText").textContent = t("progress_uploading");
-        setProgress(50);
-
-        await api("/documents", {
-          method: "POST",
-          body: JSON.stringify({
-            title: title,
-            description: description,
-            categoryId: categoryId,
-            filename: fileToUpload.name,
-            filetype: fileToUpload.name.split(".").pop().toLowerCase(),
-            mimeType: getMimeType(fileToUpload.name),
-            fileData: base64Data,
-          }),
-        });
-
-        setProgress(100);
-        document.getElementById("progressText").textContent = t("upload_success");
-        showToast(t("upload_success"));
-        setTimeout(function() { location.href = "/admin.html"; }, 1000);
-      } catch(err) {
-        showToast(err.message, "error");
-        document.getElementById("uploadBtn").disabled = false;
-        document.getElementById("progressArea").style.display = "none";
       }
+
+      const arrayBuffer = await fileToUpload.arrayBuffer();
+      const base64Data = arrayBufferToBase64(arrayBuffer);
+
+      await api("/documents", {
+        method: "POST",
+        body: JSON.stringify({
+          title: item.title || item.file.name.replace(/\.[^.]+$/, ""),
+          description: document.getElementById("description").value.trim(),
+          categoryId: document.getElementById("categorySelect").value,
+          filename: fileToUpload.name,
+          filetype: fileToUpload.name.split(".").pop().toLowerCase(),
+          mimeType: getMimeType(fileToUpload.name),
+          fileData: base64Data,
+        }),
+      });
     }
 
-    // 语言切换时刷新动态内容（分类下拉框、上传区文案）
+    // ========== 批量上传（串行，避免并发写冲突） ==========
+    let uploading = false;
+
+    async function uploadAll(onlyFailed) {
+      if (uploading) return;
+      const targets = queue.filter(function(q) {
+        return onlyFailed ? q.status === "failed" : (q.status === "pending" || q.status === "failed");
+      });
+      if (targets.length === 0) { showToast(t("no_files_selected"), "error"); return; }
+
+      uploading = true;
+      document.getElementById("uploadBtn").disabled = true;
+      document.getElementById("progressArea").style.display = "block";
+
+      let success = 0, failed = 0;
+      const total = targets.length;
+
+      for (let i = 0; i < total; i++) {
+        const item = targets[i];
+        document.getElementById("progressText").textContent = t("progress_batch", { i: i + 1, n: total });
+        setProgress(Math.round(i * 100 / total));
+
+        item.status = "uploading";
+        item.error = "";
+        renderQueue();
+
+        try {
+          await uploadOne(item);
+          item.status = "success";
+          success++;
+        } catch (err) {
+          item.status = "failed";
+          item.error = err.message || String(err);
+          failed++;
+        }
+        renderQueue();
+      }
+
+      setProgress(100);
+      uploading = false;
+      const summary = t("batch_done", { s: success, f: failed });
+      document.getElementById("progressText").textContent = summary;
+      showToast(summary, failed > 0 ? "error" : "success");
+
+      // 全部完成：延迟后收起进度条（保留队列展示结果）
+      setTimeout(function() {
+        document.getElementById("progressArea").style.display = "none";
+        renderQueue();
+      }, 2000);
+    }
+
+    // 语言切换时刷新动态内容
     window.onLangChange = function() {
       document.title = t("page_title_upload");
       loadCategories();
-      // 已选文件时显示文件名，否则显示提示文案
-      if (!selectedFile) {
-        document.getElementById("uploadZoneText").textContent = t("drop_hint");
-      }
+      renderQueue();
     };
 
+    renderQueue();
     loadCategories();
   </script>
 </body>
