@@ -3,21 +3,18 @@
     "username": "admin",
     "password": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
   },
-  "documents": [
+  "documents": [],
+  "categories": [
     {
-      "id": "doc-1787377134747-2dryic",
-      "title": "HCB中文三相电充电机操作维修说明书20260303(HCB8065R-101000-000)",
-      "description": "",
-      "categoryId": "cat-1787377116000",
-      "filename": "HCB中文三相电充电机操作维修说明书20260303(HCB8065R-101000-000).pdf",
-      "filetype": "pdf",
-      "mimeType": "application/pdf",
-      "fileSize": 1031368,
-      "filePath": "data/files/doc-1787377134747-2dryic-HCB中文三相电充电机操作维修说明书20260303_HCB8065R-101000-000_.pdf",
-      "downloadCount": 0,
-      "uploadTime": 1787377137702
+      "id": "cat-1787377116000",
+      "name": "11",
+      "icon": "fa-folder"
+    },
+    {
+      "id": "cat-1787378031976",
+      "name": "分类测试",
+      "icon": "fa-folder"
     }
   ],
-  "categories": [],
   "initialized": true
 }
