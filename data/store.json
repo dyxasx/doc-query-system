@@ -18,12 +18,6 @@
       "uploadTime": 1787377137702
     }
   ],
-  "categories": [
-    {
-      "id": "cat-1787378031976",
-      "name": "分类测试",
-      "icon": "fa-folder"
-    }
-  ],
+  "categories": [],
   "initialized": true
 }
