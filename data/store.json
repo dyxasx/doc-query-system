@@ -3,13 +3,7 @@
     "username": "admin",
     "password": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9"
   },
-  "categories": [
-    {
-      "id": "cat-1787378031976",
-      "name": "分类测试",
-      "icon": "fa-folder"
-    }
-  ],
+  "categories": [],
   "documents": [
     {
       "id": "doc-1787377134747-2dryic",
