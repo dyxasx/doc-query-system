@@ -268,7 +268,7 @@ export async function onRequest(context) {
 
   try {
     // GET /api/documents 或 /api
-    if (method === "GET" && (segments[0] === "documents" || segments.length === 0)) {
+    if (method === "GET" && (segments.length === 0 || (segments[0] === "documents" && !segments[1]))) {
       return await handleListDocuments(cfg, url);
     }
     // GET /api/documents/:id
@@ -465,9 +465,9 @@ async function handleUploadDocument(cfg, body) {
   const bytes = b64ToBytes(fileData);
   const fileSize = bytes.length;
 
-  // 单文件最大 10MB（Cloudflare Workers 请求体 100MB 限制，GitHub API 单文件约 25MB 内稳妥）
-  if (fileSize > 10 * 1024 * 1024) {
-    return json({ error: "文件太大，最大支持10MB" }, 400);
+  // 单文件最大 25MB（与前端一致；GitHub Contents API 单文件稳妥上限）
+  if (fileSize > 25 * 1024 * 1024) {
+    return json({ error: "文件太大，最大支持25MB" }, 400);
   }
 
   const docId = "doc-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
