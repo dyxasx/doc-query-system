@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>充电设备产品中心 - HCB/HCC/HCD/HCF系列充电机与充电桩</title>
+<meta name="description" content="专业电动汽车充电设备制造商，提供HCB单相/三相充电机、HCC三相充电机、HCD直流充电机、HCF大功率充电机及60KW一体式直流充电桩的完整技术资料与说明书下载">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<style>
+:root{--primary:#1565C0;--primary-d:#0D47A1;--accent:#00BFA5;--bg:#F5F7FA;--card:#fff;--text:#1a1a2e;--text-l:#64748b;--border:#e2e8f0;--shadow:0 2px 12px rgba(0,0,0,.06);--shadow-lg:0 12px 40px rgba(0,0,0,.1);--radius:14px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);line-height:1.7;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+
+/* Hero */
+.hero{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-d) 100%);color:#fff;padding:60px 20px 80px;text-align:center;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;bottom:-50px;left:50%;transform:translateX(-50%);width:120%;height:100px;background:var(--bg);border-radius:50%}
+.hero h1{font-size:2.2em;font-weight:800;margin-bottom:12px;letter-spacing:1px}
+.hero p{font-size:1.1em;opacity:.92;max-width:600px;margin:0 auto 28px}
+.hero-badges{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.hero-badge{background:rgba(255,255,255,.15);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.25);padding:8px 18px;border-radius:30px;font-size:.85em;font-weight:500}
+
+/* Container */
+.container{max-width:960px;margin:0 auto;padding:0 16px}
+
+/* Stats */
+.stats{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin:-40px 0 50px;position:relative;z-index:1}
+.stat-card{background:var(--card);padding:20px 30px;border-radius:var(--radius);box-shadow:var(--shadow-lg);text-align:center;min-width:130px}
+.stat-num{font-size:2em;font-weight:800;color:var(--primary);line-height:1}
+.stat-label{font-size:.82em;color:var(--text-l);margin-top:6px}
+
+/* Section */
+.section{margin-bottom:50px}
+.section-title{font-size:1.5em;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:10px}
+.section-title i{color:var(--accent)}
+.section-desc{color:var(--text-l);font-size:.92em;margin-bottom:24px}
+
+/* Product grid */
+.product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:20px}
+.product-card{background:var(--card);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:transform .25s,box-shadow .25s;border:1px solid var(--border)}
+.product-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+.product-head{padding:24px 24px 16px;background:linear-gradient(135deg,rgba(21,101,192,.04),rgba(0,191,165,.04))}
+.product-icon{width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--primary),var(--primary-d));display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;margin-bottom:14px}
+.product-name{font-size:1.2em;font-weight:700;margin-bottom:4px}
+.product-model{font-size:.85em;color:var(--accent);font-weight:600;font-family:"SF Mono",Consolas,monospace}
+.product-body{padding:0 24px 20px}
+.product-desc{font-size:.9em;color:var(--text-l);margin-bottom:16px;line-height:1.6}
+.product-specs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.spec-tag{background:var(--bg);border:1px solid var(--border);padding:3px 10px;border-radius:8px;font-size:.78em;color:var(--text-l)}
+
+/* Doc list */
+.doc-list{border-top:1px solid var(--border);padding-top:14px}
+.doc-item{display:flex;align-items:center;gap:10px;padding:8px 0;font-size:.88em;border-bottom:1px solid var(--border)}
+.doc-item:last-child{border-bottom:none}
+.doc-icon{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.doc-icon.pdf{background:rgba(239,68,68,.1);color:#ef4444}
+.doc-icon.docx{background:rgba(37,99,235,.1);color:#2563eb}
+.doc-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-lang{font-size:.75em;color:var(--text-l);background:var(--bg);padding:2px 8px;border-radius:6px;flex-shrink:0}
+.doc-btn{padding:5px 12px;border-radius:7px;font-size:.8em;font-weight:600;border:none;cursor:pointer;flex-shrink:0;transition:.2s}
+
+/* Footer */
+.footer{background:var(--text);color:rgba(255,255,255,.7);padding:40px 20px 30px;text-align:center;margin-top:60px}
+.footer-brand{font-size:1.15em;font-weight:700;color:#fff;margin-bottom:10px}
+.footer p{font-size:.85em;margin-bottom:6px}
+.footer a{color:var(--accent)}
+
+/* Mobile */
+@media(max-width:640px){
+.hero{padding:40px 16px 70px}
+.hero h1{font-size:1.6em}
+.hero p{font-size:.95em}
+.stats{gap:10px;margin:-30px 0 40px}
+.stat-card{padding:14px 20px;min-width:100px}
+.stat-num{font-size:1.6em}
+.section-title{font-size:1.25em}
+.product-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<header class="hero">
+  <h1><i class="fa-solid fa-bolt"></i> 充电设备产品中心</h1>
+  <p>专业电动汽车充电设备制造商 · 完整产品说明书与技术资料</p>
+  <div class="hero-badges">
+    <span class="hero-badge"><i class="fa-solid fa-check-circle"></i> 国内外均可访问</span>
+    <span class="hero-badge"><i class="fa-brands fa-weixin"></i> 微信可直接打开</span>
+    <span class="hero-badge"><i class="fa-solid fa-globe"></i> 中英文双语</span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat-card"><div class="stat-num">5</div><div class="stat-label">产品系列</div></div>
+  <div class="stat-card"><div class="stat-num">14</div><div class="stat-label">技术文档</div></div>
+  <div class="stat-card"><div class="stat-num">2</div><div class="stat-label">语言版本</div></div>
+  <div class="stat-card"><div class="stat-num">60<span style="font-size:.6em">KW</span></div><div class="stat-label">最大功率</div></div>
+</div>
+
+<!-- Products -->
+<section class="section">
+  <h2 class="section-title"><i class="fa-solid fa-cubes"></i> 产品系列</h2>
+  <p class="section-desc">点击"在线查看"可直接在浏览器/微信中预览说明书PDF，点击"下载"获取原文档</p>
+  <div class="product-grid" id="productGrid"></div>
+</section>
+
+<!-- Contact -->
+<section class="section" style="text-align:center;padding:40px 20px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);">
+  <h2 class="section-title" style="justify-content:center"><i class="fa-solid fa-headset"></i> 联系我们</h2>
+  <p style="color:var(--text-l);margin:10px 0 20px;">如需了解更多产品信息或技术支持，请扫描下方二维码或点击联系按钮</p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a href="https://doc-query-system.pages.dev/" class="doc-btn" style="background:var(--primary);color:#fff;padding:12px 28px;font-size:1em;"><i class="fa-solid fa-database"></i> 文档管理系统</a>
+  </div>
+</section>
+
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-brand"><i class="fa-solid fa-bolt"></i> 充电设备产品中心</div>
+  <p>© 2026 充电设备产品中心 · 版权所有</p>
+  <p>所有产品说明书均可在本站在线查看或下载</p>
+</footer>
+
+<script>
+// 产品数据（从文档系统同步）
+const BASE = "https://doc-query-system.pages.dev/api";
+const FILE_BASE = "https://doc-query-system.pages.dev/api/documents";
+
+const products = [
+  {
+    name: "60KW一体式直流充电桩",
+    model: "60KW / 单枪",
+    icon: "fa-charging-station",
+    desc: "一体式直流快速充电桩，单枪设计，适用于公共停车场、商业地产及高速公路服务区。",
+    specs: ["60KW", "直流", "单枪", "CCS2/GB/T"],
+    docs: [{ id: "doc-1787381747025-ominkc", title: "用户手册 V1.0", lang: "中文", type: "pdf", size: "1.4 MB" }]
+  },
+  {
+    name: "HCB 系列充电机",
+    model: "HCB8035R / HCB8065R",
+    icon: "fa-plug-circle-bolt",
+    desc: "HCB系列充电机涵盖单相与三相版本，支持便携式充电场景，中英文说明书齐全。",
+    specs: ["单相/三相", "便携式", "中英文"],
+    docs: [
+      { id: "doc-1787381757782-2e3luj", title: "HCB8035R-101000-000", lang: "英文", type: "pdf", size: "2.1 MB" },
+      { id: "doc-1787381771932-xj0p4f", title: "HCB8065R-101001-000", lang: "英文", type: "pdf", size: "2.6 MB" },
+      { id: "doc-1787381784120-tjanxd", title: "HCB8035R-101001-000", lang: "中文", type: "pdf", size: "1.3 MB" },
+      { id: "doc-1787381794034-2qa1v7", title: "HCB8065R-101000-000", lang: "中文", type: "pdf", size: "1.0 MB" },
+    ]
+  },
+  {
+    name: "HCC 系列三相充电机",
+    model: "HCC80200-405046",
+    icon: "fa-plug-circle-bolt",
+    desc: "HCC系列三相交流充电机，80A输出，适用于商业及工业充电场景。",
+    specs: ["三相", "80A", "中英文"],
+    docs: [
+      { id: "doc-1787381810128-wl785n", title: "HCC80200-405046-100", lang: "英文", type: "pdf", size: "4.4 MB" },
+      { id: "doc-1787381820045-ue0i5z", title: "HCC80200-405046-000", lang: "中文", type: "pdf", size: "1.6 MB" },
+    ]
+  },
+  {
+    name: "HCD 系列直流充电机",
+    model: "HCD96200-405046",
+    icon: "fa-bolt-lightning",
+    desc: "HCD系列直流充电机，96V/200A规格，高效直流快充方案。",
+    specs: ["直流", "96V", "200A", "中英文"],
+    docs: [
+      { id: "doc-1787381827835-7zp93h", title: "HCD96200-405046-000", lang: "英文", type: "pdf", size: "816 KB" },
+      { id: "doc-1787381835984-qgl3sd", title: "HCD96200-405046-100", lang: "中文", type: "pdf", size: "1.4 MB" },
+    ]
+  },
+  {
+    name: "HCF 系列大功率充电机",
+    model: "HCF80100 / HCF80200",
+    icon: "fa-industry",
+    desc: "HCF系列大功率三相充电机，10KW/20KW规格，满足重载充电需求，支持PDF与Word格式文档。",
+    specs: ["三相", "10KW/20KW", "中英文"],
+    docs: [
+      { id: "doc-1787381854604-ao1n5s", title: "HCF80100-405046-000", lang: "英文", type: "pdf", size: "5.1 MB" },
+      { id: "doc-1787381874934-akpduk", title: "HCF80200-405046-000", lang: "英文", type: "docx", size: "4.4 MB" },
+      { id: "doc-1787381893205-3sopa9", title: "HCF80200-405046-000", lang: "英文", type: "pdf", size: "5.0 MB" },
+      { id: "doc-1787381910495-5ehs29", title: "HCF80200-405046-100", lang: "中文", type: "docx", size: "4.0 MB" },
+      { id: "doc-1787381930508-uq6kg9", title: "HCF80200-405046-100", lang: "中文", type: "pdf", size: "4.6 MB" },
+    ]
+  },
+];
+
+function renderProducts() {
+  const grid = document.getElementById('productGrid');
+  grid.innerHTML = products.map(function(p) {
+    const docsHtml = p.docs.map(function(d) {
+      return '<div class="doc-item">' +
+        '<div class="doc-icon ' + d.type + '"><i class="fa-solid fa-file-' + (d.type === 'pdf' ? 'pdf' : 'word') + '"></i></div>' +
+        '<span class="doc-name">' + d.title + '</span>' +
+        '<span class="doc-lang">' + d.lang + '</span>' +
+        '<span style="font-size:.78em;color:var(--text-l);flex-shrink:0;">' + d.size + '</span>' +
+        '<a class="doc-btn" style="background:var(--accent);color:#fff;" href="' + FILE_BASE + '/' + d.id + '/file" target="_blank">在线查看</a>' +
+        '<a class="doc-btn" style="background:var(--primary);color:#fff;" href="' + FILE_BASE + '/' + d.id + '/file" download>下载</a>' +
+      '</div>';
+    }).join('');
+
+    const specsHtml = p.specs.map(function(s) {
+      return '<span class="spec-tag">' + s + '</span>';
+    }).join('');
+
+    return '<div class="product-card">' +
+      '<div class="product-head">' +
+        '<div class="product-icon"><i class="fa-solid ' + p.icon + '"></i></div>' +
+        '<div class="product-name">' + p.name + '</div>' +
+        '<div class="product-model">' + p.model + '</div>' +
+      '</div>' +
+      '<div class="product-body">' +
+        '<p class="product-desc">' + p.desc + '</p>' +
+        '<div class="product-specs">' + specsHtml + '</div>' +
+        '<div class="doc-list">' + docsHtml + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+renderProducts();
+</script>
+</body>
+</html>
