@@ -58,6 +58,9 @@ a{color:inherit;text-decoration:none}
 .doc-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .doc-lang{font-size:.75em;color:var(--text-l);background:var(--bg);padding:2px 8px;border-radius:6px;flex-shrink:0}
 .doc-btn{padding:5px 12px;border-radius:7px;font-size:.8em;font-weight:600;border:none;cursor:pointer;flex-shrink:0;transition:.2s}
+.doc-empty{font-size:.85em;color:var(--text-l);text-align:center;padding:10px 0}
+.doc-loading{font-size:.85em;color:var(--text-l);text-align:center;padding:10px 0}
+.doc-loading i{margin-right:6px}
 
 /* Footer */
 .footer{background:var(--text);color:rgba(255,255,255,.7);padding:40px 20px 30px;text-align:center;margin-top:60px}
@@ -75,6 +78,8 @@ a{color:inherit;text-decoration:none}
 .stat-num{font-size:1.6em}
 .section-title{font-size:1.25em}
 .product-grid{grid-template-columns:1fr}
+.doc-item{flex-wrap:wrap}
+.doc-name{flex-basis:100%;order:-1;white-space:normal}
 }
 </style>
 </head>
@@ -96,7 +101,7 @@ a{color:inherit;text-decoration:none}
 <!-- Stats -->
 <div class="stats">
   <div class="stat-card"><div class="stat-num">5</div><div class="stat-label">产品系列</div></div>
-  <div class="stat-card"><div class="stat-num">14</div><div class="stat-label">技术文档</div></div>
+  <div class="stat-card"><div class="stat-num" id="statDocs">--</div><div class="stat-label">技术文档</div></div>
   <div class="stat-card"><div class="stat-num">2</div><div class="stat-label">语言版本</div></div>
   <div class="stat-card"><div class="stat-num">60<span style="font-size:.6em">KW</span></div><div class="stat-label">最大功率</div></div>
 </div>
@@ -127,104 +132,207 @@ a{color:inherit;text-decoration:none}
 </footer>
 
 <script>
-// 产品数据（从文档系统同步）
-const BASE = "https://doc-query-system.pages.dev/api";
-const FILE_BASE = "https://doc-query-system.pages.dev/api/documents";
+// ===== 配置 =====
+var BASE = "https://doc-query-system.pages.dev/api";
+var FILE_BASE = "https://doc-query-system.pages.dev/api/documents";
 
-const products = [
+// 产品系列卡片（静态营销信息 + 文档匹配关键词）
+var products = [
   {
+    key: "60kw",
     name: "60KW一体式直流充电桩",
     model: "60KW / 单枪",
     icon: "fa-charging-station",
     desc: "一体式直流快速充电桩，单枪设计，适用于公共停车场、商业地产及高速公路服务区。",
     specs: ["60KW", "直流", "单枪", "CCS2/GB/T"],
-    docs: [{ id: "doc-1787381747025-ominkc", title: "用户手册 V1.0", lang: "中文", type: "pdf", size: "1.4 MB" }]
+    match: ["60KW", "充电桩"]
   },
   {
+    key: "hcb",
     name: "HCB 系列充电机",
     model: "HCB8035R / HCB8065R",
     icon: "fa-plug-circle-bolt",
     desc: "HCB系列充电机涵盖单相与三相版本，支持便携式充电场景，中英文说明书齐全。",
     specs: ["单相/三相", "便携式", "中英文"],
-    docs: [
-      { id: "doc-1787381757782-2e3luj", title: "HCB8035R-101000-000", lang: "英文", type: "pdf", size: "2.1 MB" },
-      { id: "doc-1787381771932-xj0p4f", title: "HCB8065R-101001-000", lang: "英文", type: "pdf", size: "2.6 MB" },
-      { id: "doc-1787381784120-tjanxd", title: "HCB8035R-101001-000", lang: "中文", type: "pdf", size: "1.3 MB" },
-      { id: "doc-1787381794034-2qa1v7", title: "HCB8065R-101000-000", lang: "中文", type: "pdf", size: "1.0 MB" },
-    ]
+    match: ["HCB"]
   },
   {
+    key: "hcc",
     name: "HCC 系列三相充电机",
     model: "HCC80200-405046",
     icon: "fa-plug-circle-bolt",
     desc: "HCC系列三相交流充电机，80A输出，适用于商业及工业充电场景。",
     specs: ["三相", "80A", "中英文"],
-    docs: [
-      { id: "doc-1787381810128-wl785n", title: "HCC80200-405046-100", lang: "英文", type: "pdf", size: "4.4 MB" },
-      { id: "doc-1787381820045-ue0i5z", title: "HCC80200-405046-000", lang: "中文", type: "pdf", size: "1.6 MB" },
-    ]
+    match: ["HCC"]
   },
   {
+    key: "hcd",
     name: "HCD 系列直流充电机",
     model: "HCD96200-405046",
     icon: "fa-bolt-lightning",
     desc: "HCD系列直流充电机，96V/200A规格，高效直流快充方案。",
     specs: ["直流", "96V", "200A", "中英文"],
-    docs: [
-      { id: "doc-1787381827835-7zp93h", title: "HCD96200-405046-000", lang: "英文", type: "pdf", size: "816 KB" },
-      { id: "doc-1787381835984-qgl3sd", title: "HCD96200-405046-100", lang: "中文", type: "pdf", size: "1.4 MB" },
-    ]
+    match: ["HCD"]
   },
   {
+    key: "hcf",
     name: "HCF 系列大功率充电机",
     model: "HCF80100 / HCF80200",
     icon: "fa-industry",
     desc: "HCF系列大功率三相充电机，10KW/20KW规格，满足重载充电需求，支持PDF与Word格式文档。",
     specs: ["三相", "10KW/20KW", "中英文"],
-    docs: [
-      { id: "doc-1787381854604-ao1n5s", title: "HCF80100-405046-000", lang: "英文", type: "pdf", size: "5.1 MB" },
-      { id: "doc-1787381874934-akpduk", title: "HCF80200-405046-000", lang: "英文", type: "docx", size: "4.4 MB" },
-      { id: "doc-1787381893205-3sopa9", title: "HCF80200-405046-000", lang: "英文", type: "pdf", size: "5.0 MB" },
-      { id: "doc-1787381910495-5ehs29", title: "HCF80200-405046-100", lang: "中文", type: "docx", size: "4.0 MB" },
-      { id: "doc-1787381930508-uq6kg9", title: "HCF80200-405046-100", lang: "中文", type: "pdf", size: "4.6 MB" },
-    ]
-  },
+    match: ["HCF"]
+  }
 ];
 
-function renderProducts() {
-  const grid = document.getElementById('productGrid');
-  grid.innerHTML = products.map(function(p) {
-    const docsHtml = p.docs.map(function(d) {
-      return '<div class="doc-item">' +
-        '<div class="doc-icon ' + d.type + '"><i class="fa-solid fa-file-' + (d.type === 'pdf' ? 'pdf' : 'word') + '"></i></div>' +
-        '<span class="doc-name">' + d.title + '</span>' +
-        '<span class="doc-lang">' + d.lang + '</span>' +
-        '<span style="font-size:.78em;color:var(--text-l);flex-shrink:0;">' + d.size + '</span>' +
-        '<a class="doc-btn" style="background:var(--accent);color:#fff;" href="' + FILE_BASE + '/' + d.id + '/file" target="_blank">在线查看</a>' +
-        '<a class="doc-btn" style="background:var(--primary);color:#fff;" href="' + FILE_BASE + '/' + d.id + '/file" download>下载</a>' +
-      '</div>';
-    }).join('');
-
-    const specsHtml = p.specs.map(function(s) {
-      return '<span class="spec-tag">' + s + '</span>';
-    }).join('');
-
-    return '<div class="product-card">' +
-      '<div class="product-head">' +
-        '<div class="product-icon"><i class="fa-solid ' + p.icon + '"></i></div>' +
-        '<div class="product-name">' + p.name + '</div>' +
-        '<div class="product-model">' + p.model + '</div>' +
-      '</div>' +
-      '<div class="product-body">' +
-        '<p class="product-desc">' + p.desc + '</p>' +
-        '<div class="product-specs">' + specsHtml + '</div>' +
-        '<div class="doc-list">' + docsHtml + '</div>' +
-      '</div>' +
-    '</div>';
-  }).join('');
+// ===== 工具函数 =====
+function esc(s) {
+  return String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-renderProducts();
+function detectLang(title) {
+  if (/中文|汉化/.test(title)) return "中文";
+  if (/英文|English/i.test(title)) return "英文";
+  return "";
+}
+
+function fmtTitle(doc) {
+  // 标题去掉超长的规格括号后缀，保留主体（如"30个字符"内）
+  var t = doc.title || doc.filename || "未命名文档";
+  return t.length > 46 ? t.slice(0, 46) + "…" : t;
+}
+
+// ===== 渲染 =====
+function cardHtml(p, docs, isLoading, isError) {
+  var docsHtml;
+  if (isLoading) {
+    docsHtml = '<div class="doc-loading"><i class="fa-solid fa-spinner fa-spin"></i>正在从文档库加载…</div>';
+  } else if (isError) {
+    docsHtml = '<div class="doc-empty"><i class="fa-solid fa-triangle-exclamation"></i> 文档加载失败，请刷新重试</div>';
+  } else if (!docs || docs.length === 0) {
+    docsHtml = '<div class="doc-empty">暂无文档，请联系我们获取</div>';
+  } else {
+    docsHtml = docs.map(function(d) {
+      var ft = (d.filetype || "pdf").toLowerCase();
+      var isPdf = ft === "pdf";
+      var lang = detectLang(d.title || "");
+      var fileUrl = FILE_BASE + "/" + encodeURIComponent(d.id) + "/file";
+      var viewBtn = isPdf
+        ? '<a class="doc-btn" style="background:var(--accent);color:#fff;" href="' + fileUrl + '" target="_blank" rel="noopener">在线查看</a>'
+        : '';
+      return '<div class="doc-item">' +
+        '<div class="doc-icon ' + (isPdf ? "pdf" : "docx") + '"><i class="fa-solid fa-file-' + (isPdf ? "pdf" : "word") + '"></i></div>' +
+        '<span class="doc-name" title="' + esc(d.title || "") + '">' + esc(fmtTitle(d)) + '</span>' +
+        (lang ? '<span class="doc-lang">' + lang + '</span>' : '') +
+        '<span style="font-size:.78em;color:var(--text-l);flex-shrink:0;">' + esc(d.fileSizeFormatted || "") + '</span>' +
+        viewBtn +
+        '<a class="doc-btn" style="background:var(--primary);color:#fff;" href="' + fileUrl + '" download>下载</a>' +
+      '</div>';
+    }).join("");
+  }
+
+  var specsHtml = p.specs.map(function(s) { return '<span class="spec-tag">' + esc(s) + '</span>'; }).join("");
+
+  return '<div class="product-card" data-key="' + esc(p.key) + '">' +
+    '<div class="product-head">' +
+      '<div class="product-icon"><i class="fa-solid ' + p.icon + '"></i></div>' +
+      '<div class="product-name">' + esc(p.name) + '</div>' +
+      '<div class="product-model">' + esc(p.model) + '</div>' +
+    '</div>' +
+    '<div class="product-body">' +
+      '<p class="product-desc">' + esc(p.desc) + '</p>' +
+      '<div class="product-specs">' + specsHtml + '</div>' +
+      '<div class="doc-list">' + docsHtml + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderSkeleton() {
+  var grid = document.getElementById("productGrid");
+  grid.innerHTML = products.map(function(p) { return cardHtml(p, null, true, false); }).join("");
+}
+
+function fillDocs(docs) {
+  // 按关键词分组（按系列在 products 中的顺序优先匹配）
+  var grouped = {};
+  var used = {};
+  products.forEach(function(p) {
+    grouped[p.key] = [];
+  });
+  var others = [];
+
+  // 按上传时间排序（旧的在前，与文档库一致）
+  docs.slice().sort(function(a, b) { return (a.uploadTime || 0) - (b.uploadTime || 0); }).forEach(function(d) {
+    var t = (d.title || "") + " " + (d.filename || "");
+    var hit = null;
+    for (var i = 0; i < products.length; i++) {
+      var p = products[i];
+      for (var j = 0; j < p.match.length; j++) {
+        if (t.toUpperCase().indexOf(p.match[j].toUpperCase()) >= 0) { hit = p; break; }
+      }
+      if (hit) break;
+    }
+    if (hit) { grouped[hit.key].push(d); used[d.id] = true; }
+    else { others.push(d); }
+  });
+
+  // 更新各卡片文档区
+  products.forEach(function(p) {
+    var card = document.querySelector('.product-card[data-key="' + p.key + '"]');
+    if (card) {
+      var list = card.querySelector(".doc-list");
+      var tmp = document.createElement("div");
+      tmp.innerHTML = cardHtml(p, grouped[p.key], false, false);
+      list.innerHTML = tmp.querySelector(".doc-list").innerHTML;
+    }
+  });
+
+  // 未匹配文档 → 追加"更多资料"卡片
+  if (others.length > 0) {
+    var extra = {
+      key: "more",
+      name: "更多技术资料",
+      model: "OTHERS",
+      icon: "fa-folder-open",
+      desc: "以下文档暂未归类到具体产品系列，如有疑问请联系我们。",
+      specs: ["资料库"],
+      match: []
+    };
+    var grid = document.getElementById("productGrid");
+    var div = document.createElement("div");
+    div.innerHTML = cardHtml(extra, others, false, false);
+    grid.appendChild(div.firstElementChild);
+  }
+
+  // 更新统计数字
+  var statEl = document.getElementById("statDocs");
+  if (statEl) statEl.textContent = String(docs.length);
+}
+
+function renderError() {
+  products.forEach(function(p) {
+    var card = document.querySelector('.product-card[data-key="' + p.key + '"]');
+    if (card) {
+      var list = card.querySelector(".doc-list");
+      list.innerHTML = '<div class="doc-empty"><i class="fa-solid fa-triangle-exclamation"></i> 文档加载失败，请刷新重试</div>';
+    }
+  });
+}
+
+// ===== 启动 =====
+renderSkeleton();
+fetch(BASE + "/documents", { headers: { "Accept": "application/json" } })
+  .then(function(r) {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  })
+  .then(function(d) {
+    var docs = Array.isArray(d) ? d : (d.documents || d.data || []);
+    fillDocs(docs);
+  })
+  .catch(function() {
+    renderError();
+  });
 </script>
 </body>
 </html>
