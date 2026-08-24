@@ -199,6 +199,19 @@
       "filePath": "data/files/doc-1787532210329-qjn7fp-HCB中文三相电充电机操作维修说明书20260303_HCB8065R-101000-000_.pdf",
       "downloadCount": 0,
       "uploadTime": 1787532213091
+    },
+    {
+      "id": "doc-1787532240224-5sff9u",
+      "title": "60KW一体式直流充电桩（单枪）-用户手册V1.0",
+      "description": "",
+      "categoryId": "cat-1787531745791",
+      "filename": "60KW一体式直流充电桩（单枪）-用户手册V1.0.pdf",
+      "filetype": "pdf",
+      "mimeType": "application/pdf",
+      "fileSize": 1489774,
+      "filePath": "data/files/doc-1787532240224-5sff9u-60KW一体式直流充电桩_单枪_-用户手册V1.0.pdf",
+      "downloadCount": 0,
+      "uploadTime": 1787532243585
     }
   ],
   "initialized": true
