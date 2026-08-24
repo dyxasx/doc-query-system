@@ -23,6 +23,11 @@
       "id": "cat-1787531745791",
       "name": "HCZ",
       "icon": "fa-folder"
+    },
+    {
+      "id": "cat-1787531788401",
+      "name": "HCF",
+      "icon": "fa-folder"
     }
   ],
   "documents": [
