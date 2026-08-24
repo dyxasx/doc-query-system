@@ -8,6 +8,11 @@
       "id": "cat-1787531632032",
       "name": "HCB",
       "icon": "fa-folder"
+    },
+    {
+      "id": "cat-1787531642043",
+      "name": "HCC",
+      "icon": "fa-folder"
     }
   ],
   "documents": [
