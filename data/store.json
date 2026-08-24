@@ -111,19 +111,6 @@
       "filePath": "data/files/doc-1787381835984-qgl3sd-HCD中文版操作维修说明书说明书20260526_HCD96200-405046-100_.pdf",
       "downloadCount": 0,
       "uploadTime": 1787381839202
-    },
-    {
-      "id": "doc-1787531537800-nayiva",
-      "title": "HCF10KW英文三相电充电机操作维修说明书(HCF80100-405046-000)",
-      "description": "",
-      "categoryId": null,
-      "filename": "HCF10KW英文三相电充电机操作维修说明书(HCF80100-405046-000).pdf",
-      "filetype": "pdf",
-      "mimeType": "application/pdf",
-      "fileSize": 5295202,
-      "filePath": "data/files/doc-1787531537800-nayiva-HCF10KW英文三相电充电机操作维修说明书_HCF80100-405046-000_.pdf",
-      "downloadCount": 0,
-      "uploadTime": 1787531541099
     }
   ],
   "initialized": true
