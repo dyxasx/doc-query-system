@@ -3,7 +3,13 @@
     "username": "admin",
     "password": "1894539823d72bf5a53c7ee24bffe91027be755fd094e974e808664e8b21f77a"
   },
-  "categories": [],
+  "categories": [
+    {
+      "id": "cat-1787531632032",
+      "name": "HCB",
+      "icon": "fa-folder"
+    }
+  ],
   "documents": [
     {
       "id": "doc-1787381771932-xj0p4f",
