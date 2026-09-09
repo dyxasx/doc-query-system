@@ -212,6 +212,19 @@
       "filePath": "data/files/doc-1788933367345-25qrta-HCB_Single-Phase_Battery_Charger_Operating_and_Maintenance_Manual.pdf",
       "downloadCount": 0,
       "uploadTime": 1788933370419
+    },
+    {
+      "id": "doc-1788933415876-176dwa",
+      "title": "HCB Three-Phase Battery Charger Operating and Maintenance Manual",
+      "description": "",
+      "categoryId": null,
+      "filename": "HCB Three-Phase Battery Charger Operating and Maintenance Manual.pdf",
+      "filetype": "pdf",
+      "mimeType": "application/pdf",
+      "fileSize": 2693930,
+      "filePath": "data/files/doc-1788933415876-176dwa-HCB_Three-Phase_Battery_Charger_Operating_and_Maintenance_Manual.pdf",
+      "downloadCount": 0,
+      "uploadTime": 1788933418986
     }
   ],
   "initialized": true
