@@ -199,6 +199,19 @@
       "filePath": "data/files/doc-1787532240224-5sff9u-60KW一体式直流充电桩_单枪_-用户手册V1.0.pdf",
       "downloadCount": 0,
       "uploadTime": 1787532243585
+    },
+    {
+      "id": "doc-1788933367345-25qrta",
+      "title": "HCB Single-Phase Battery Charger Operating and Maintenance Manual",
+      "description": "",
+      "categoryId": "cat-1787531632032",
+      "filename": "HCB Single-Phase Battery Charger Operating and Maintenance Manual.pdf",
+      "filetype": "pdf",
+      "mimeType": "application/pdf",
+      "fileSize": 2224098,
+      "filePath": "data/files/doc-1788933367345-25qrta-HCB_Single-Phase_Battery_Charger_Operating_and_Maintenance_Manual.pdf",
+      "downloadCount": 0,
+      "uploadTime": 1788933370419
     }
   ],
   "initialized": true
