@@ -160,6 +160,19 @@
       "filePath": "data/files/doc-1794199277699-rb3549-HCD中文版操作维修说明书说明书.pdf",
       "downloadCount": 0,
       "uploadTime": 1794199280545
+    },
+    {
+      "id": "doc-1794199307330-hlj8kp",
+      "title": "HCF中文三相电充电机操作维修说明书",
+      "description": "",
+      "categoryId": "cat-1787531788401",
+      "filename": "HCF中文三相电充电机操作维修说明书.pdf",
+      "filetype": "pdf",
+      "mimeType": "application/pdf",
+      "fileSize": 4910131,
+      "filePath": "data/files/doc-1794199307330-hlj8kp-HCF中文三相电充电机操作维修说明书.pdf",
+      "downloadCount": 0,
+      "uploadTime": 1794199310506
     }
   ],
   "initialized": true
