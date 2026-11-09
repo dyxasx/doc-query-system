@@ -277,6 +277,19 @@
       "filePath": "data/files/doc-1794194774023-dypp4j-HCC中文三相电充电机操作维修说明书.pdf",
       "downloadCount": 0,
       "uploadTime": 1794194776775
+    },
+    {
+      "id": "doc-1794194804813-p2ajnd",
+      "title": "HCD Three-Phase Battery Charger Operating and Maintenance Manual",
+      "description": "",
+      "categoryId": "cat-1787531652837",
+      "filename": "HCD Three-Phase Battery Charger Operating and Maintenance Manual.pdf",
+      "filetype": "pdf",
+      "mimeType": "application/pdf",
+      "fileSize": 3065309,
+      "filePath": "data/files/doc-1794194804813-p2ajnd-HCD_Three-Phase_Battery_Charger_Operating_and_Maintenance_Manual.pdf",
+      "downloadCount": 0,
+      "uploadTime": 1794194807741
     }
   ],
   "initialized": true
