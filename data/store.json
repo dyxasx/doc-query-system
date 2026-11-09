@@ -147,6 +147,19 @@
       "filePath": "data/files/doc-1794199258112-fgldcq-HCC中文三相电充电机操作维修说明书.pdf",
       "downloadCount": 0,
       "uploadTime": 1794199262117
+    },
+    {
+      "id": "doc-1794199277699-rb3549",
+      "title": "HCD中文版操作维修说明书说明书",
+      "description": "",
+      "categoryId": "cat-1787531652837",
+      "filename": "HCD中文版操作维修说明书说明书.pdf",
+      "filetype": "pdf",
+      "mimeType": "application/pdf",
+      "fileSize": 1394434,
+      "filePath": "data/files/doc-1794199277699-rb3549-HCD中文版操作维修说明书说明书.pdf",
+      "downloadCount": 0,
+      "uploadTime": 1794199280545
     }
   ],
   "initialized": true
