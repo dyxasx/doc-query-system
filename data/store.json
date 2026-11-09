@@ -199,6 +199,19 @@
       "filePath": "data/files/doc-1788933824870-qq5cau-HCF10KW中文三相电充电机操作维修说明书_HCF80100-405046-100_.pdf",
       "downloadCount": 0,
       "uploadTime": 1788933828840
+    },
+    {
+      "id": "doc-1794194674157-xrib1c",
+      "title": "HCB Single-Phase Battery Charger Operating and Maintenance Manual",
+      "description": "",
+      "categoryId": "cat-1787531632032",
+      "filename": "HCB Single-Phase Battery Charger Operating and Maintenance Manual.pdf",
+      "filetype": "pdf",
+      "mimeType": "application/pdf",
+      "fileSize": 1507797,
+      "filePath": "data/files/doc-1794194674157-xrib1c-HCB_Single-Phase_Battery_Charger_Operating_and_Maintenance_Manual.pdf",
+      "downloadCount": 0,
+      "uploadTime": 1794194677511
     }
   ],
   "initialized": true
