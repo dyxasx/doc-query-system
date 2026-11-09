@@ -316,6 +316,19 @@
       "filePath": "data/files/doc-1794194846328-cl0c4n-HCF_Three-Phase_Battery_Charger_Operating_and_Maintenance_Manual.pdf",
       "downloadCount": 0,
       "uploadTime": 1794194849591
+    },
+    {
+      "id": "doc-1794194863406-qjj1gj",
+      "title": "HCF中文三相电充电机操作维修说明书",
+      "description": "",
+      "categoryId": "cat-1787531788401",
+      "filename": "HCF中文三相电充电机操作维修说明书.pdf",
+      "filetype": "pdf",
+      "mimeType": "application/pdf",
+      "fileSize": 4912046,
+      "filePath": "data/files/doc-1794194863406-qjj1gj-HCF中文三相电充电机操作维修说明书.pdf",
+      "downloadCount": 0,
+      "uploadTime": 1794194866553
     }
   ],
   "initialized": true
