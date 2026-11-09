@@ -225,6 +225,19 @@
       "filePath": "data/files/doc-1794194711352-rhi74v-HCB_Three-Phase_Battery_Charger_Operating_and_Maintenance_Manual.pdf",
       "downloadCount": 0,
       "uploadTime": 1794194714563
+    },
+    {
+      "id": "doc-1794194722957-2i3yqh",
+      "title": "HCB中文单相电充电机操作维修说明书",
+      "description": "",
+      "categoryId": "cat-1787531632032",
+      "filename": "HCB中文单相电充电机操作维修说明书.pdf",
+      "filetype": "pdf",
+      "mimeType": "application/pdf",
+      "fileSize": 1083850,
+      "filePath": "data/files/doc-1794194722957-2i3yqh-HCB中文单相电充电机操作维修说明书.pdf",
+      "downloadCount": 0,
+      "uploadTime": 1794194725424
     }
   ],
   "initialized": true
